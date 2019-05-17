@@ -1,0 +1,508 @@
+﻿#include-once
+#NoTrayIcon
+#include "Array.au3"
+
+_plys ()
+exit
+
+
+;#############################################################################
+func _plys ()
+;#############################################################################
+	
+	#cs ======================================================================
+	#		Configuration
+	#ce ======================================================================
+	
+	local const $targetExt = "aup"
+	local $run = True
+	local $stdioExchange = True
+	local const $stdioLatencyDecay = 1000		; milliseconds
+	
+	; features
+	global $_PLYS_CONSTBYDEFAULT = False		;!!! TODO: each file
+	local $closeBlockByIndent = True		;!!! TODO: each file
+		global const $_PLYS_INDENTEDBLOCKPREFIX = "\["		; regular expression
+		;local $tab = @TAB		!!! TODO + each file
+	local $importKeyword = True		;!!! TODO: each file
+		local const $modulePrivatePrefix = "_"
+		local const $newSuffixLen = 2
+		local const $nameDelim = ":"		; regular expression
+	
+	; get project settings
+	local $text
+	$text = FileRead (@ScriptFullPath)
+	$run = $run _
+		and not StringRegExp ($text, "(?m)^\#plys norun")
+	$stdioExchange = $stdioExchange _
+		and not StringRegExp ($text, "(?m)^\#plys nostdio")
+	$_PLYS_CONSTBYDEFAULT = $_PLYS_CONSTBYDEFAULT _
+		or StringRegExp ($text, "(?m)^\#plys const")
+	$closeBlockByIndent = $closeBlockByIndent _
+		and not StringRegExp ($text, "(?m)^\#plys noindent")
+	$importKeyword = $importKeyword _
+		and not StringRegExp ($text, "(?m)^\#plys noimport")
+	
+	
+	#cs ======================================================================
+	#		Prepare
+	#ce ======================================================================
+	
+	#cs	$DepTable [n+1][n+1]
+	#			$DepTable [0][0] = n				number of files
+	#			$DepTable [1-n][0]					relative path to file “n”
+	#			$DepTable [0][1-n]					names array of file “n”
+	#			$DepTable [i][j] = $include		file “i” includes file “j”
+	#ce
+	local $DepTable [1][1] = [[0]]
+	_plys_GetDeps ($DepTable)
+	local $targetPaths [0]
+	
+	if $importKeyword then
+		local $ThruTable = $DepTable
+		enum $include = 2, $mir_include = 1.5, $import = 1
+		local const $directives [] = [$import, $include, $mir_include]
+		
+		; capture dependencies throught
+		local $changed
+		do
+			$changed = False
+			for $row = 1 to $ThruTable [0][0]
+				for $col = 1 to $ThruTable [0][0]
+					switch $ThruTable [$row][$col]
+						case $include ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+							; “mirror” rule
+							if $ThruTable [$col][$row] <= $import then
+								$ThruTable [$col][$row] = $mir_include
+								$changed = True
+							endif
+							; “chain” rule for column
+							for $y = 1 to $ThruTable [0][0]
+								if $y <> $col and _
+									$ThruTable [$y][$row] > $ThruTable [$y][$col] _
+								then
+									$ThruTable [$y][$col] = $ThruTable [$y][$row]
+									$changed = True
+								endif
+							next
+						case $import ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+							; “chain” rule for column
+							for $y = 1 to $ThruTable [0][0]
+								if $y <> $col and _
+									$ThruTable [$y][$row] > $import _
+								and _
+									$ThruTable [$y][$col] = "" _
+								then
+									$ThruTable [$y][$col] = $import
+									$changed = True
+								endif
+							next
+					endswitch
+				next
+			next
+		until not $changed
+		
+		; make suffixes
+		local const $abc = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", _
+			"K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", _
+			"X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+		local const $abcLen = UBound ($abc)
+		local $suffixes [$DepTable [0][0] + 1]
+		local $suffix
+		$suffixes [0] = $DepTable [0][0]
+		for $module = 1 to $suffixes [0]
+			do
+				$suffix = ""
+				for $i = 1 to $newSuffixLen
+					$suffix &= $abc [Random (0, $abcLen - 1, 1)]
+				next
+			until _ArraySearch ($suffixes, $suffix) = -1
+			$suffixes [$module] = $suffix
+		next
+		
+	endif
+	
+	
+	#cs ======================================================================
+	#		Process Files
+	#ce ======================================================================
+	
+	local $sourcePath, $targetPath
+	local $comments, $indentSize, $prevIndentSize, $statement, _
+		$sttmnt, $closer, $indent
+	local $funcDeclares, $newFuncDeclare, $args
+	local $rel_dirSlash, $relrel_dep, $foundInPrev
+	local $names, $prefix, $filename, $varPrefix
+	local const $globalmatch = 3, $entiresplit = 1, $nocount = 2
+	
+	for $module = 1 to $DepTable [0][0]
+		$sourcePath = @ScriptDir & "\" & $DepTable [$module][0]
+		$text = FileRead ($sourcePath)
+		
+		; comment #AutoIt3Wrapper_Run_AU3Check=N and “#plys” lines
+		if True or $module = 1 then
+			$text = StringRegExpReplace _
+				($text, "(?m)^\#AutoIt3Wrapper_Run_AU3Check=N", ";PLYS $0")
+			$text = StringRegExpReplace _
+				($text, "(?m)^\#include\s+<plys>", ";$0")
+			$text = StringRegExpReplace _
+				($text, "(?m)^\#plys\s", ";$0")
+		endif
+		
+		; Close block by indent
+		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+		if $closeBlockByIndent then
+			$text = StringSplit _
+				($text & @CRLF, @CRLF, $entiresplit + $nocount)
+			$comments = False
+			$prevIndentSize = 0
+			local $stack [0]
+			for $i = 0 to UBound ($text) - 1
+				
+				; skip comments and directives (and empty lines)
+				if StringRegExp ($text [$i], "^\s*;") then continueloop
+				if $comments then
+					if StringRegExp ($text [$i], "^\s*(\#ce|\#comments-end)") _
+						then $comments = False
+					continueloop
+				endif
+				if StringRegExp ($text [$i], "(\#cs|\#comments-start)") then
+					$comments = True
+					continueloop
+				endif
+				if StringRegExp ($text [$i], "^\s*\#") then continueloop
+
+				
+				if not StringRegExp ($text [$i], "^\s*$") then _
+					$text [$i] &= @TAB & @TAB & ";" & ($i + 1)
+				
+				$indentSize = StringLen _
+					(StringRegExpReplace ($text [$i], "^(\t*).*", "$1"))
+				$statement =  StringRegExpReplace ($text [$i], _
+					"^\t*" & $_PLYS_INDENTEDBLOCKPREFIX & "\s*([^\s]*).*", "$1")
+				switch $statement
+					case "if", "else", "elseif", "select", "switch", "case", _
+							"for", "while", "continueloop", "exitloop", _
+							"with", "func"
+						$text [$i] = StringRegExpReplace ($text [$i], _
+							"^(\t*)" & $_PLYS_INDENTEDBLOCKPREFIX, "$1")
+				endswitch
+				if $indentSize < $prevIndentSize then
+					$sttmnt = $statement
+					for $j = $indentSize to $prevIndentSize - 1
+						if $j > UBound ($stack) - 1 then exitloop
+						switch $stack [$j]
+							case "if"
+								if $sttmnt = "else" or $sttmnt = "elseif" then
+									$sttmnt = ""
+									continueloop
+								endif
+								$closer = "endif"
+							case "elseif"
+								if $sttmnt = "elseif" or $sttmnt = "else" then continueloop
+								$closer = "endif"
+							case "else"
+								$closer = "endif"
+							case "select", "switch", "with", "func"
+								$closer = "end" & $stack [$j]
+							case "for"
+								$closer = "next"
+							case "while"
+								$closer = "wend"
+							case else
+								continueloop
+						endswitch
+						$indent = ""
+						for $k = 1 to $j
+							$indent &= @TAB
+						next
+						$text [$i] = $indent & $closer & @CRLF & $text [$i]
+					next
+					redim $stack [$indentSize]
+				endif
+				switch $statement
+					case "if", "else", "elseif", "select", "switch", _
+							"for", "while", "with", "func"
+						redim $stack [$indentSize + 1]
+						$stack [$indentSize] = $statement
+				endswitch
+				$prevIndentSize = $indentSize
+			next
+			$text = StringTrimRight (_ArrayToString ($text, @CRLF), 2)
+		endif
+		
+		; Const by default
+		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+		if $_PLYS_CONSTBYDEFAULT then
+			$text = StringRegExpReplace _
+				($text, "(?im)^(const|enum|static)\s+\$", "global $0")
+			$text = StringRegExpReplace _
+				($text, "(?im)^(\s+)((?:const|enum|static)\s+\$)", "$1local $2")
+			$text = StringRegExpReplace _
+				($text, "(?im)^dim(\s+\$)", "global$1")
+			$text = StringRegExpReplace _
+				($text, "(?im)^(\s+)dim(\s+\$)", "$1local$2")
+			$funcDeclares = _
+				StringRegExp ($text, "(?im)^\s*func\s+.*$", $globalmatch)
+			if IsArray ($funcDeclares) then
+				for $funcDeclare in $funcDeclares
+					$newFuncDeclare = $funcDeclare
+					$args = StringRegExpReplace _
+						($funcDeclare, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
+					if $args = "" then continueloop
+					$args = StringSplit ($args, ",", $nocount)
+					for $arg in $args		; insert “const”
+						if not StringRegExp ($arg, "\b(const|dim)\b") then _
+							$newFuncDeclare = StringReplace _
+								($newFuncDeclare, $arg, " const " & $arg)
+					next
+					$newFuncDeclare = StringRegExpReplace _
+						($newFuncDeclare, "\bdim\s+", "")		; delete “dim”
+					$text = StringReplace _
+						($text, $funcDeclare, $newFuncDeclare)
+				next
+			endif
+		endif
+		
+		; Import
+		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+		if $importKeyword then
+			; comment #import if module including or importing alredy been
+			for $dep = 1 to $DepTable [0][0]
+				if $DepTable [$module][$dep] <> $import then continueloop
+				$rel_dirSlash = _
+					_plys_PathPart ($DepTable [$module][0], "dir")
+				$relrel_dep = $DepTable [$dep][0]
+				if $rel_dirSlash <> "" then $relrel_dep = _
+						StringReplace ($relrel_dep, $rel_dirSlash, "")
+				$relrel_dep = StringRegExpReplace _
+					($relrel_dep, "[\\\.\^\$\[\(\{\+\#]", "\\$0")
+				$text = StringRegExpReplace _
+					($text, '(?m)^\#(include|import)\s+[<"]' & _
+					$relrel_dep & '[>"]', ";PLYS $0")
+				$foundInPrev = False
+				for $prev = 1 to $module - 1
+					if $DepTable [$prev][$dep] then
+						$foundInPrev = True
+						exitloop
+					endif
+				next
+				if not $foundInPrev then		; uncomment first
+					$text = StringRegExpReplace _
+						($text, '(?m)^;PLYS (\#(include|import)\s+[<"]' & _
+						$relrel_dep & '[>"])', "$1", 1)
+				endif
+			next
+					
+			; replace “#import/#include "path\name.au3"”
+			; with “#include "path\name.%target_ext%"”
+			$text = StringRegExpReplace ($text, _
+				'(?m)^\#(include|import)\s+"(.*\\)?(.*?)\.au3"(.*)$', _
+				'#include "$2$3\.' & $targetExt & '"$4')
+			
+			; replace own names
+			$names = $DepTable [0][$module]
+			if IsArray ($names) then
+				; purified filename
+				$prefix = _plys_PathPart ($DepTable [$module][0], "dir", "name")
+				$prefix = StringRegExpReplace ($prefix, "[^\w]", "_")
+				for $name in $names
+					if StringLeft ($name, 1) = "$" then		; is variable
+						$text = StringRegExpReplace ($text, _
+							"(?im)([^\w""'" & $nameDelim & "]|^)\$(" & _
+								StringTrimLeft ($name, 1) & ")([^\w""'])", _
+							"$1\$" & $prefix & "_$2__" & $suffixes [$module] & "$3")
+					else		; is function
+						$text = StringRegExpReplace ($text, _
+							"(?im)([^\w""'\$" & $nameDelim & "]|^)(" & $name & ")([^\w""'])", _
+							"$1" & $prefix & "_$2__" & $suffixes [$module] & "$3")
+					endif
+				next
+			endif
+			
+			; replace names from $ThruTable [0][$dep] in $module file
+			for $directive in $directives		; import (1), include (2), mir_include (1.5)
+				for $dep = 1 to $DepTable [0][0]
+					if $ThruTable [$module][$dep] <> $directive then _
+						continueloop
+					$names = $DepTable [0][$dep]
+					if IsArray ($names) then
+						; purified filename
+						$filename = _plys_PathPart ($DepTable [$dep][0], "name")
+						$filename = StringRegExpReplace ($filename, "[^\w]", "_")
+						$prefix = _plys_PathPart ($DepTable [$dep][0], "dir")
+						$prefix = StringRegExpReplace ($prefix, "[^\w]", "_")
+						$prefix &= $filename
+						for $name in $names
+							if StringLeft ($name, 1) = "$" then		; is variable
+								$name = StringTrimLeft ($name, 1)
+								$varPrefix = "\$"
+							else
+								$varPrefix = ""
+							endif
+							if $ThruTable [$module][$dep] <> $import then
+								$text = StringRegExpReplace ($text, _
+									"(?im)([^\w""']|^)" & $varPrefix & $name & "([^\w""'])", _
+									"$1" & $varPrefix & $prefix & "_" & $name & "__" & $suffixes [$dep] & "$2")
+							elseif StringLeft ($name, 1) <> $modulePrivatePrefix then
+								$text = StringRegExpReplace ($text, _
+									"(?im)([^\w""']|^)" & $filename & $nameDelim & $varPrefix & $name & "([^\w""'])", _
+									"$1" & $varPrefix & $prefix & "_" & $name & "__" & $suffixes [$dep] & "$2")
+							endif
+						next
+					endif
+				next
+			next
+		endif
+		
+		$targetPath = _plys_PathPart ($sourcePath, "drive", "name") & _
+			"." & $targetExt
+		if FileExists ($targetPath) then
+			if FileGetTime ($sourcePath, 0, 1) > _
+					FileGetTime ($targetPath, 0, 1) or True then
+				FileDelete ($targetPath)
+				FileWrite ($targetPath, $text)
+				if $run then
+					FileSetAttrib ($targetPath, "+H")
+					_ArrayAdd ($targetPaths, $targetPath)
+				endif
+			endif
+		else
+			FileWrite ($targetPath, $text)
+			if $run then
+				FileSetAttrib ($targetPath, "+H")
+				_ArrayAdd ($targetPaths, $targetPath)
+			endif
+		endif
+	next
+	$text = ""
+	$DepTable = 0
+	if $importKeyword then $ThruTable = 0
+	
+	
+	if $run then
+		local const $pid = Run ( _
+			StringFormat ('%s "%s\%s.%s" %s', @AutoItExe, @ScriptDir, _
+			_plys_PathPart (@ScriptName, "name"), $targetExt, _
+			_ArrayToString ($CmdLine, " ", 1)), "", default, _
+			$STDIN_CHILD + $STDERR_CHILD + $STDOUT_CHILD)
+		if $stdioExchange then
+			local $timer = TimerInit ()
+			while True
+				StdinWrite ($pid, ConsoleRead ())
+				ConsoleWriteError (StderrRead ($pid))
+				ConsoleWrite (StdoutRead ($pid))
+				if TimerDiff ($timer) > 1000 then
+					if not ProcessExists ($pid) then exitloop
+					$timer = TimerInit ()
+				endif
+				GUIGetMsg ()
+			wend
+			StdioClose ($pid)
+		endif
+		;for $targetPath in $targetPaths
+		;	FileDelete ($targetPath)
+		;next
+	endif
+	
+endfunc
+
+
+;=============================================================================
+func _plys_GetDeps (byref $DepTable, const $rel_path=@ScriptName)
+; Search all #include and #import paths in $rel_path file, add module numbers
+; into $DepTable and recursively process this dependencies.
+; $rel_* - relative to @ScriptDir, $relrel_* - relative to $rel_path
+;=============================================================================
+	local $text = FileRead (@ScriptDir & "\" & $rel_path)
+	local const $globalmatch = 3, $nocount = 2
+	local const $relrel_includes = _
+		StringRegExp ($text, '(?m)^\#include\s+"(.+?)"', $globalmatch)
+	local const $relrel_imports = _
+		StringRegExp ($text, '(?m)^\#import\s+"(.+?)"', $globalmatch)
+	local $names = StringRegExp ($text, _
+		"(?im)^\s*" & $_PLYS_INDENTEDBLOCKPREFIX & "?\s*func\s+(\w*)", _
+		$globalmatch)
+	if not IsArray ($names) then local $names [0]
+	if $_PLYS_CONSTBYDEFAULT then
+		local $varsDeclares = StringRegExp _
+			($text, "(?im)^(?:global|dim|const|enum)\s+(.*)", $globalmatch)
+	else
+		local $varsDeclares = _
+			StringRegExp ($text, "(?im)^global\s+(.*)", $globalmatch)
+	endif
+	$text = ""
+	if IsArray ($varsDeclares) then
+		; FIXME: "const $bar = foo (1, 2)" → ["$bar = foo (1", " 2)"]
+		local $newNames
+		for $varsDeclare in $varsDeclares
+			for $varDeclare in StringSplit ($varsDeclare, ",", $nocount)
+				$newNames = _
+					StringRegExp ($varDeclare, "(\$\w*)", $globalmatch)
+				if IsArray ($newNames) then _ArrayAdd ($names, $newNames [0])
+			next
+		next
+	endif
+	$varsDeclares = ""
+	
+	; append and init new module cells
+	local const $module = $DepTable [0][0] + 1
+	redim $DepTable [$module + 1][$module + 1]
+	$DepTable [0][0] = $module
+	$DepTable [$module][0] = $rel_path
+	$DepTable [0][$module] = $names
+	$names = ""
+	
+	enum $include = 2, $import = 1
+	local const $directives [] = [$include, $import]
+	local $relrel_deps, $rel_dep, $dep
+	local const $rel_dirSlash = _
+		_plys_PathPart ($rel_path, "dir")		; current_file\directory\
+	for $directive in $directives
+		$relrel_deps = ($directive=$include) ? _
+			$relrel_includes : $relrel_imports
+		if not IsArray ($relrel_deps) then continueloop
+		
+		for $relrel_dep in $relrel_deps
+			$rel_dep = $rel_dirSlash & $relrel_dep
+			$dep = _ArraySearch ($DepTable, $rel_dep, 1, default, _
+				default, default, default, 0)
+				; from 1 element in col 0
+			if $dep = -1 then		; new path
+				_plys_GetDeps ($DepTable, $rel_dep)
+				$dep = _ArraySearch ($DepTable, $rel_dep, 1, default, _
+					default, default, default, 0)
+					; from 1 element in col 0
+			endif
+			$DepTable [$module][$dep] = $directive
+		next
+		
+	next
+endfunc
+
+
+func _plys_PathPart (const $path, $start="path", $finish="")
+	local const $components = ["path", "drive", "dir", "name", "ext"]
+	$start = _ArraySearch ($components, $start)
+	if @error then $start = 0
+	$finish = _ArraySearch ($components, $finish)
+	if @error then $finish = $start
+	
+	; from _PathSplit (File.au3)
+	local const $arraymatch = 1
+	local $split = StringRegExp ($path, _
+		"^\h*((?:\\\\\?\\)*(\\\\[^\?\/\\]+|[A-Za-z]:)?(.*[\/\\]\h*)?" & _
+		"((?:[^\.\/\\]|(?(?=\.[^\/\\]*\.)\.))*)?([^\/\\]*))$", $arraymatch)
+	if @error then ; This error should never happen.
+		redim $split [5]
+		$split [0] = $path
+	endif
+	$split [2] = StringRegExpReplace ($split [2], "\h*[\/\\]+\h*", _
+		(StringLeft ($split [2], 1) == "/") ? "\/" : "\\")
+	
+	local $result = ""
+	for $i = $start to $finish
+		$result &= $split [$i]
+	next
+	return $result
+endfunc
