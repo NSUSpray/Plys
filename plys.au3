@@ -376,13 +376,13 @@ func plys ()
 		if $synonyms and $isPlysFile then
 			$Text = SplitStatements ($Text)
 			; _Array
-			for $name in StringSplit ("add coldelete colInsert combinations display extract findall insert max maxindex min minindex permute pop push reverse search shuffle sort swap toclip tostring transpose trim unique", " ", $STR_NOCOUNT)
+			for $name in StringSplit ("add coldelete colinsert combinations display extract findall insert max maxindex min minindex permute pop push reverse search shuffle sort swap toclip tostring transpose trim unique", " ", $STR_NOCOUNT)
 				reReplaceInMain ($Text, "(?i)\b" & $name & "\b", "_array" & $name)
 			next
 			reReplaceInMain ($Text, "(?i)\btohist\b", "_Array1DToHistogram")
 			reReplaceInMain ($Text, "(?i)\bbinsearch\b", "_ArrayBinarySearch")
 			reReplaceInMain ($Text, "(?i)\bconcat\b", "_ArrayConcatenate")
-			reReplaceInMain ($Text, "(?i)\badelete\b", "_ArrayDelete")
+			reReplaceInMain ($Text, "(?i)\badel\b", "_ArrayDelete")
 			;
 			reReplaceInMain ($Text, "(?i)\bprint\b", "ConsoleWrite")
 			; File
@@ -390,7 +390,7 @@ func plys ()
 				reReplaceInMain ($Text, "(?i)\b" & $name & "\b", "file" & $name)
 			next
 			reReplaceInMain ($Text, "(?i)\bcreatelink\b", "FileCreateNTFSLink")
-			reReplaceInMain ($Text, "(?i)\bfdelete\b", "FileDelete")
+			reReplaceInMain ($Text, "(?i)\bfdel\b", "FileDelete")
 			reReplaceInMain ($Text, "(?i)\bfirstfile\b", "FileFindFirstFile")
 			reReplaceInMain ($Text, "(?i)\bnextfile\b", "FileFindNextFile")
 			; String
@@ -403,9 +403,10 @@ func plys ()
 			for $name in StringSplit ("nocasesense casesense nocasesensebasic stripleading striptrailing stripspaces stripall chrsplit entiresplit nocount endnotstart utf16 ucs2", " ", $STR_NOCOUNT)
 				reReplaceInMain ($Text, "(?i)@" & $name & "\b", "$str_" & $name)
 			next
-			for $name in StringSplit ("match arraymatch arrayfullmatch arrayglobalmatch arrayglobalfullmatch", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)@" & $name & "\b", "$str_regexp" & $name)
+			for $name in StringSplit ("array arrayfull arrayglobal arrayglobalfull", " ", $STR_NOCOUNT)
+				reReplaceInMain ($Text, "(?i)@" & $name & "\b", "$str_regexp" & $name & "match")
 			next
+			reReplaceInMain ($Text, "(?i)@match\b", "$STR_REGEXPMATCH")
 			$Text = _ArrayToString ($Text, "", -1, -1, "", 0, 0) & @CRLF & "#include <Array.au3>" & @CRLF & "#include <StringConstants.au3>"
 		endif
 		
