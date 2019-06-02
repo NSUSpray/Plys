@@ -1,7 +1,7 @@
 ﻿#include-once
 #NoTrayIcon;Opt("TrayIconDebug",1)
-#include "..\Array.au3"
-#include "..\StringConstants.au3"
+#include "Array.au3"
+#include "StringConstants.au3"
 
 enum $COMMENT_TYPE, $DIRECTIVE_TYPE, $STRING_TYPE, $MAIN_TYPE
 
