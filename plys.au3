@@ -23,6 +23,7 @@ func plys ()
 	local $stdioExchange = True
 	
 	; features
+	local $noDollarPrefix = True
 	global $_CONSTBYDEFAULT = True
 	local $closeBlockByIndent = True
 		;TODO: local $tab = "\t"
@@ -31,13 +32,15 @@ func plys ()
 		local const $newSuffixLen = 2
 		local const $nameDelim = ":"		; regular expression
 	local $synonyms = True
-	
+
 	; get project settings
 	local $Text = FileRead (@ScriptFullPath)
 	$run = $run and _
 		not StringRegExp ($Text, "(?m)^\#plys norun")
 	$stdioExchange = $stdioExchange and _
 		not StringRegExp ($Text, "(?m)^\#plys nostdio")
+	$noDollarPrefix = $noDollarPrefix and _
+		not StringRegExp ($Text, "(?m)^\#plys dollarprefix")
 	$_CONSTBYDEFAULT = $_CONSTBYDEFAULT and _
 		not StringRegExp ($Text, "(?m)^\#plys noconst")
 	$closeBlockByIndent = $closeBlockByIndent and _
@@ -242,6 +245,30 @@ func plys ()
 			$Text = StringTrimRight (_ArrayToString ($Text, @CRLF), 2)
 		endif
 		
+		; No dollar prefix
+		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+		if $noDollarPrefix and $isPlysFile then
+			$Text = SplitStatements ($Text)
+			$names = $DepTable [0][$module]
+			if IsArray ($names) then
+				$names = _ArrayToString ($names)
+				$names = StringRegExpReplace ($names, "\|\$\w+", "")  ; funcs only
+				$names = StringRegExpReplace ($names, "\$\w+\|", "")  ; funcs only
+				if $names <> "" then $names = "|" & $names
+			else
+				$names = ""
+			endif
+			reReplaceInMain ($Text, "(?i)(?(?=\b(" & _
+				"byref|const|continuecase|continueloop|default|dim|do|" & _
+				"until|enum|exit|exitloop|false|for|to|step|next|for|in|" & _
+				"func|return|endfunc|global|if|then|elseif|else|endif|" & _
+				"local|null|redim|select|case|endselect|static|switch|" & _
+				"endswitch|true|volatile|with|endwith|while|wend|and|or|" & _
+				"not|_" & $names & _
+				")\b) |(?<![\w@$])[A-Za-z_]\w*(?!\w*(\s*\(|:|\s*_\W)))", "\$$0")
+			$Text = _ArrayToString ($Text, "", -1, -1, "", 0, 0)
+		endif
+
 		; Const by default
 		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 		if $_CONSTBYDEFAULT and $isPlysFile then
@@ -532,9 +559,13 @@ func GetDeps (byref $DepTable, const $rel_path)
 		local $newNames
 		for $varsDeclare in $varsDeclares
 			for $varDeclare in StringSplit ($varsDeclare, ",", $STR_NOCOUNT)
+				;$newNames = StringRegExp _
+				;	($varDeclare, "(\$\w*)", $STR_REGEXPARRAYGLOBALMATCH)
+				;if IsArray ($newNames) then _ArrayAdd ($names, $newNames [0])
 				$newNames = StringRegExp _
-					($varDeclare, "(\$\w*)", $STR_REGEXPARRAYGLOBALMATCH)
-				if IsArray ($newNames) then _ArrayAdd ($names, $newNames [0])
+					($varDeclare, "(\$?[A-Za-z_]\w*)", $STR_REGEXPARRAYGLOBALMATCH)
+				if IsArray ($newNames) then _ArrayAdd ($names, _
+					StringRegExpReplace ($newNames [0], "^\w", "\$$0", 1))
 			next
 		next
 	endif
