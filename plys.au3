@@ -1,10 +1,12 @@
 ﻿#include-once
-#NoTrayIcon;Opt("TrayIconDebug",1)
 #include "Array.au3"
 #include "StringConstants.au3"
+#include "TrayConstants.au3"
 
 enum $COMMENT_TYPE, $DIRECTIVE_TYPE, $STRING_TYPE, $MAIN_TYPE
 
+TraySetIcon ("stop")
+TraySetState ($TRAY_ICONSTATE_FLASH)
 plys ()
 exit
 
@@ -23,7 +25,7 @@ func plys ()
 	; features
 	global $_CONSTBYDEFAULT = True
 	local $closeBlockByIndent = True
-		;local $tab = @TAB
+		;TODO: local $tab = "\t"
 	global $_IMPORTKEYWORD = True
 		local const $modulePrivatePrefix = "_"
 		local const $newSuffixLen = 2
@@ -171,7 +173,7 @@ func plys ()
 				endif
 				if StringRegExp ($Text [$i], "^\s*\#") then continueloop
 				
-				if Mod ($i + 1, 10) = 0 and _
+				if Mod ($i + 1, 5) = 0 and _
 						not StringRegExp ($Text [$i], "^\s*$") then _
 					$Text [$i] &= @TAB & @TAB & "; #" & ($i + 1)
 				
@@ -319,6 +321,7 @@ func plys ()
 				; purified filename
 				$prefix = PathPart ($DepTable [$module][0], "dir", "name")
 				$prefix = StringRegExpReplace ($prefix, "[^\w]", "_")
+				; TODO: загнать имена в шаблон (имя|имя|…) и заменить одним махом
 				for $name in $names
 					if StringLeft ($name, 1) = "$" then		; is variable
 						reReplaceInMain ($Text, _
@@ -375,39 +378,72 @@ func plys ()
 		; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 		if $synonyms and $isPlysFile then
 			$Text = SplitStatements ($Text)
-			; _Array
-			for $name in StringSplit ("add coldelete colinsert combinations display extract findall insert max maxindex min minindex permute pop push reverse search shuffle sort swap toclip tostring transpose trim unique", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)\b" & $name & "\b", "_array" & $name)
-			next
-			reReplaceInMain ($Text, "(?i)\btohist\b", "_Array1DToHistogram")
-			reReplaceInMain ($Text, "(?i)\bbinsearch\b", "_ArrayBinarySearch")
-			reReplaceInMain ($Text, "(?i)\bconcat\b", "_ArrayConcatenate")
-			reReplaceInMain ($Text, "(?i)\badel\b", "_ArrayDelete")
 			;
-			reReplaceInMain ($Text, "(?i)\bprint\b", "ConsoleWrite")
-			; File
-			for $name in StringSplit ("changedir close copy createshortcut exists flush getattrib getencoding getlongname getpos getshortcut getshortname getsize gettime getversion install move open opendialog read readline readtoarray recycle recycleempty savedialog selectfolder setattrib setend setpos settime write writeline", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)\b" & $name & "\b", "file" & $name)
-			next
-			reReplaceInMain ($Text, "(?i)\bcreatelink\b", "FileCreateNTFSLink")
-			reReplaceInMain ($Text, "(?i)\bfdel\b", "FileDelete")
-			reReplaceInMain ($Text, "(?i)\bfirstfile\b", "FileFindFirstFile")
-			reReplaceInMain ($Text, "(?i)\bnextfile\b", "FileFindNextFile")
-			; String
-			for $name in StringSplit ("addcr format instr isalnum isalpha isascii isdigit islower isspace isupper isxdigit left len lower mid replace reverse right split stripcr stripws trimleft trimright upper", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)\b" & $name & "\b", "string" & $name)
-			next
-			reReplaceInMain ($Text, "(?i)\brefind\b", "StringRegExp")
-			reReplaceInMain ($Text, "(?i)\brerepl\b", "StringRegExpReplace")
-			; Consts
-			for $name in StringSplit ("nocasesense casesense nocasesensebasic stripleading striptrailing stripspaces stripall chrsplit entiresplit nocount endnotstart utf16 ucs2", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)@" & $name & "\b", "$str_" & $name)
-			next
-			for $name in StringSplit ("array arrayfull arrayglobal arrayglobalfull", " ", $STR_NOCOUNT)
-				reReplaceInMain ($Text, "(?i)@" & $name & "\b", "$str_regexp" & $name & "match")
-			next
-			reReplaceInMain ($Text, "(?i)@match\b", "$STR_REGEXPMATCH")
-			$Text = _ArrayToString ($Text, "", -1, -1, "", 0, 0) & @CRLF & "#include <Array.au3>" & @CRLF & "#include <StringConstants.au3>"
+			reReplaceInMain ($Text, "(?i)\bPrint\b", "ConsoleWrite")
+			; DllStruct −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)\bStruct\b", "DllStructCreate")
+			reReplaceInMain ($Text, "(?i)\bStructGet\b", "DllStructGetData")
+			reReplaceInMain ($Text, "(?i)\bStructGetSize\b", "DllStructGetSize")
+			reReplaceInMain ($Text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
+			reReplaceInMain ($Text, "(?i)\bStructSet\b", "DllStructSetData")
+			; File −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)\b(" & _
+				"ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" & _
+				"GetEncoding|GetLongName|GetShortcut|GetShortName|" & _
+				"GetSize|GetTime|GetVersion|Open|OpenDialog|Read|" & _
+				"ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|" & _
+				"SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|" & _
+				"WriteLine" & _
+				")\b", "File$1")
+			reReplaceInMain ($Text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
+			reReplaceInMain ($Text, "(?i)\bFirstFile\b", "FileFindFirstFile")
+			reReplaceInMain ($Text, "(?i)\bNextFile\b", "FileFindNextFile")
+			; **Close|**Delete|**Exists|**GetPos|Install|**Move
+			; String −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)\b(" & _
+				"AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" & _
+				"IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" & _
+				"Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" & _
+				"Upper" & _
+				")\b", "String$1")
+			reReplaceInMain ($Text, "(?i)\breFind\b", "StringRegExp")
+			reReplaceInMain ($Text, "(?i)\breRepl\b", "StringRegExpReplace")
+			; Compare|FromASCIIArray|*IsFloat|*IsInt|**Reverse|ToASCIIArray
+			; Win −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)\b(" & _
+				"Activate|Active|Flash|GetCaretPos|GetClassList|" & _
+				"GetClientSize|GetProcess|GetTitle|Kill|List|" & _
+				"MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" & _
+				"SetTitle|SetTrans|Wait|WaitActive|WaitClose|" & _
+				"WaitNotActive" & _
+				")\b", "Win$1")
+			; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move|*SetState
+			; Macros −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)(@)(" & _
+				"NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" & _
+				"StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" & _
+				"NoCount|EndNotStart|UTF16|UCS2" & _
+				")\b", "$Str_$2")
+			reReplaceInMain ($Text, "(?i)(@re)(" & _
+				"Array|ArrayFull|ArrayGlobal|ArrayGlobalFull"& _
+				")\b", "$Str_RegExp$2Match")
+			reReplaceInMain ($Text, "(?i)@reMatch\b", "$STR_REGEXPMATCH")
+			reReplaceInMain ($Text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
+			; _Array −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			reReplaceInMain ($Text, "(?i)\b(" & _
+				"Add|ColDelete|ColInsert|Combinations|Display|Extract|" & _
+				"FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" & _
+				"Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" & _
+				"Unique" & _
+				")\b", "_Array$1")
+			reReplaceInMain ($Text, "(?i)\bToHist\b", "_Array1DToHistogram")
+			reReplaceInMain ($Text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
+			reReplaceInMain ($Text, "(?i)\bConcat\b", "_ArrayConcatenate")
+			; **Delete|**Reverse|*ToString
+			; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+			$Text = _ArrayToString ($Text, "", -1, -1, "", 0, 0) & @CRLF & _
+				"#include <StringConstants.au3>" & @CRLF & _
+				"#include <Array.au3>"
 		endif
 		
 		$targetPath = PathPart ($sourcePath, "drive", "ext") & ".au3"
@@ -440,6 +476,7 @@ func plys ()
 			PathPart ($rel_path, "name", "ext") & '.au3" ' & _
 			_ArrayToString ($CmdLine, " ", 1), _
 			"", default, $STDIN_CHILD + $STDERR_CHILD + $STDOUT_CHILD)
+		Opt ("TrayIconHide", 1)
 		if $stdioExchange then
 			local $timer = TimerInit ()
 			while True
@@ -570,7 +607,9 @@ func PathPart (const $path, $start="path", $finish="")
 endfunc
 
 
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 func SplitStatements (const byref $text)
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 	local $split [1][2], $i = 0
 	local $result
 	local $patterns [4], $type = $MAIN_TYPE
