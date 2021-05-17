@@ -52,46 +52,46 @@ mylib:_bar = mylib:_foo()       ; error: _bar and _foo() are private in “mylib” 
 
 1. Place the “plys.au3” file in the “Include” folder (*C:\Program Files (x86)\AutoIt3\Include\*).
 1. Make in your project folder au3-file with this content
-   ```autoit
-#include <plys.au3>
-#plys "MainFileOfMyProject.aup"
-
-; run me!
-```
+    ```autoit
+    #include <plys.au3>
+    #plys "MainFileOfMyProject.aup"
+    
+    ; run me!
+    ```
 1. Then, if you have the files *module1.aup* and *module2.au3* with the same names
-   ```autoit
-; module1.aup
-
-dim bar, _bar
-
-func foo()
-    ; instructions
-```
-   ```autoit
-; module2.au3
-
-global $bar
-
-func foo()
-    ; instructions
-endfunc
-
-func _foo()
-    ; instructions
-endfunc
-```
-   you can write in your program like this
-   ```autoit
-; MainFileOfMyProject.aup
-
-#import "module1.aup"
-#import "module2.au3"
-
-module1:bar = module2:foo()
-;module1:_bar = module2:_foo()      ; error because _bar and _foo() are private (with underscore prefix)
-
-#import "module2.au3"       ; re-importing files without "#include-once" will not lead to errors
-```
+    ```autoit
+    ; module1.aup
+    
+    dim bar, _bar
+    
+    func foo()
+        ; instructions
+    ```
+    ```autoit
+    ; module2.au3
+    
+    global $bar
+    
+    func foo()
+        ; instructions
+    endfunc
+    
+    func _foo()
+        ; instructions
+    endfunc
+    ```
+    you can write in your program like this
+    ```autoit
+    ; MainFileOfMyProject.aup
+    
+    #import "module1.aup"
+    #import "module2.au3"
+    
+    module1:bar = module2:foo()
+    ;module1:_bar = module2:_foo()      ; error because _bar and _foo() are private (with underscore prefix)
+    
+    #import "module2.au3"       ; re-importing files without "#include-once" will not lead to errors
+    ```
 
 You can turn off data exchange through standard input/output streams, then the shell process will not hang in memory, but then you will not be able to observe the output of your program in the output window of your development environment. You can do this by adding a line to the main file of your program
 ```autoit
@@ -116,17 +116,17 @@ The *plys.au3* file contains the code that is run immediately after the launch o
 ## TODO
 
 * #import **from** "*filename.aup*"
-  ```autoit
-#import from "mylib.aup"
-
-bar = foo()     ; bar and foo will be taken from the "mylib.aup"
-```
+    ```autoit
+    #import from "mylib.aup"
+    
+    bar = foo()     ; bar and foo will be taken from the "mylib.aup"
+    ```
 
 * #import "*filename.aup*" as **alias**
-  ```autoit
-#import "mylib.aup" as ml
-
-ml:bar = ml:foo()       ; bar and foo will be taken from the "mylib.aup"
-```
+    ```autoit
+    #import "mylib.aup" as ml
+    
+    ml:bar = ml:foo()       ; bar and foo will be taken from the "mylib.aup"
+    ```
 
 * Optimize translation speed
