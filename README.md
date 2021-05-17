@@ -52,14 +52,14 @@ mylib:_bar = mylib:_foo()       ; error: _bar and _foo() are private in “mylib” 
 
 1. Place the “plys.au3” file in the “Include” folder (*C:\Program Files (x86)\AutoIt3\Include\*).
 1. Make in your project folder au3-file with this content
-```autoit
+   ```autoit
 #include <plys.au3>
 #plys "MainFileOfMyProject.aup"
 
 ; run me!
 ```
 1. Then, if you have the files *module1.aup* and *module2.au3* with the same names
-```autoit
+   ```autoit
 ; module1.aup
 
 dim bar, _bar
@@ -67,7 +67,7 @@ dim bar, _bar
 func foo()
     ; instructions
 ```
-```autoit
+   ```autoit
 ; module2.au3
 
 global $bar
@@ -80,8 +80,8 @@ func _foo()
     ; instructions
 endfunc
 ```
-you can write in your program like this
-```autoit
+   you can write in your program like this
+   ```autoit
 ; MainFileOfMyProject.aup
 
 #import "module1.aup"
@@ -116,14 +116,14 @@ The *plys.au3* file contains the code that is run immediately after the launch o
 ## TODO
 
 * #import **from** "*filename.aup*"
-```autoit
+  ```autoit
 #import from "mylib.aup"
 
 bar = foo()     ; bar and foo will be taken from the "mylib.aup"
 ```
 
 * #import "*filename.aup*" as **alias**
-```autoit
+  ```autoit
 #import "mylib.aup" as ml
 
 ml:bar = ml:foo()       ; bar and foo will be taken from the "mylib.aup"
