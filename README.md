@@ -1,8 +1,8 @@
-<p>**- file scope in AutoIt programs**</p>
+<p><strong>- file scope in AutoIt programs</strong></p>
 
-<p align="center">**- module-private functions and variables**</p>
+<p align="center"><strong>- module-private functions and variables</strong></p>
 
-<p align="right">**- python-like import operator**</p>
+<p align="right"><strong>- python-like import operator</strong></p>
 
 # Code is 10% lighter!
 
