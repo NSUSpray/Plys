@@ -1,10 +1,10 @@
 <p><strong>- file scope in AutoIt programs</strong></p>
 
-<p align="center"><strong>- module-private functions and variables</strong></p>
+<p><strong>- module-private functions and variables</strong></p>
 
-<p align="right"><strong>- python-like import operator</strong></p>
+<p><strong>- python-like import operator</strong></p>
 
-# Code is 10% lighter!
+# Light Your AutoIt Code
 
 This inconspicuous wrapper complements the AutoIt language with
 
