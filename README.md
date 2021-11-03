@@ -1,10 +1,90 @@
-<p><strong>- file scope in AutoIt programs</strong></p>
+## <p align="center"><strong>Light Your AutoIt Code!</strong></p>
 
-<p><strong>- module-private functions and variables</strong></p>
+<table>
+<tr><th>AutoIt</th><th>AutoIt Plys</th></tr>
+<tr><td>
 
-<p><strong>- python-like import operator</strong></p>
+```autoit
+; lib1.au3 −−−−−−−−
 
-# Light Your AutoIt Code
+#include <StringConstants.au3>
+
+Func __Lib1_Merge(Const $a, Const $b, Const $c, $d="")
+  If $d = "" Then
+    Local Const $t = $a($b, $c)
+    $d = $a(@CRLF & $b & @CRLF & $t & @CRLF, $t)
+  Else
+    $d &= $a($c & @CRLF & $b, $d)
+  EndIf
+  Return _
+    StringRegExpReplace _
+      ($d, "(" & $b & ")" & $b, "$1" & $c) & _
+    UBound(StringRegExp _
+      ($d, $c, $STR_REGEXPARRAYGLOBALFULLMATCH))
+EndFunc
+
+; lib2.au3 −−−−−−−−
+
+#include "lib1.au3"
+
+Func __Lib2_Xyx(Const $x, Const $y)
+  Return $x & $y & $x
+EndFunc
+
+Global $r = __Lib1_Merge(__Lib2_Xyx, "S", "T")
+For $i = 1 To 5
+  $r = "<" & $r & ">"
+  ConsoleWrite("$r = " & $r & @CRLF)
+Next
+```
+
+</td><td>
+
+```autoit
+; lib1.aup −−−−−−−−
+
+func merge*(a, b, c, dim d="")
+  if d = "" then
+    const t = a(b, c)
+    d = a(@ . b . @ . t . @, t)
+  else
+    d .= a(c . @ . b, d)
+  return _
+    ReReplace(d, "(" . b . ")" . b, "$1" . c) . _
+    UBound(ReFind(d, c, @ReArrayGlobalFull))
+
+; lib2.aup −−−−−−−−
+
+#import "lib1.aup"
+
+dim r = lib1:merge({x, y: x . y . x}, "S", "T")
+for i = 1 to 5
+  r = "<" . r . ">"
+  Echo("r = " . r . @)
+
+
+
+
+
+
+
+
+
+
+
+```
+
+</td></tr>
+</table>
+
+# Plys – AutoIt language superset
+
+<p><strong># file scope in AutoIt programs</strong></p>
+
+<p><strong># module-private functions and variables</strong></p>
+
+<p><strong># python-like import operator</strong></p>
+
 
 This inconspicuous wrapper complements the AutoIt language with
 
@@ -12,121 +92,146 @@ This inconspicuous wrapper complements the AutoIt language with
 1. Python-like blocking by lines indentation (without *endfunc*, *wend* etc.)
 1. **dim** and **const** outside of functions means *global* and *global const* respectively, inside of functions means *local* and *local const*
 1. arguments of function are *const* by default, but with *dim* prefix it becomes variable
-1. short synonyms for functions as a rule using in large projects: for arrays, files and strings
-1. no �$�-prefix in variable names
+1. lighter [synonyms](synonyms.md) for functions, macros and operators as a rule using in large projects: for arrays, files and strings
+1. no “$”-prefix in variable names
+1. and **each of this is optional**
+
+
+## Setup
+
+**Requirements:** [AutoIt](https://www.autoitscript.com/site/autoit/downloads/) (minimum), [AutoIt Script Editor](https://www.autoitscript.com/site/autoit-script-editor/downloads/) (optionally).
+
+
+1. Download and unpack archive from releases.
+1. Double click the “setup.au3” file and follow to setup instructions.
+
+
+## First steps
+
+1. Right-click in the any folder and select `New > AutoIt Plys Script`.
+1. Right-click on the created file again and select `Edit Script`.
+1. At the bottom of the file type the following:
+
+    ```autoit
+    #include <MsgBoxConstants.au3>
+    dim msg = ""
+    for i = 1 to 10
+        msg .= "Hello World!" . @
+    msg = TrimRight(msg, 1)
+    MsgBox(MB_OK, "My First Plys Script", msg)
+    ```
+
+1. Save the script and double-click the file for run (or right-click the file and select `Run Script`).
+
+
+## Overview
 
 ```autoit
-; file �mylib.aup�
+; file “mylib.aup”
 
-dim bar, _bar
+dim foo*, bar
 
-func foo()
-    bar = _foo()
+func baz*()
+    foo = quux()
 
-func _foo(dim str="word/number/space")
-    _bar = Sort(Split(str, "/", @NoCount))
+func quux(dim arg="one/two/three")
+    bar = Sort(Split(arg, "/", @NoCount))
+    return "begin" . @ . bar[0] . @ . "end"
 ```
 
 ```autoit
-; file �main.aup�
+; file “main.aup”
 
 #import "mylib.aup"
+...
 ```
 
-In this example variable *_bar* and function *_foo()* are private for module *mylib.aup* (names begin with an underscore) and not visible in *main.aup*. Variable *bar* and function *foo()* will be visible with the �mylib:� prefix:
+In this example variable *bar* and function *quux()* are private for module *mylib.aup* (names at declaration ends with an asterisk) and not visible in *main.aup*. Variable *foo* and function *baz()* will be visible with the “mylib:” prefix:
 
 ```autoit
-; file �main.aup�
+; file “main.aup”
 
 #import "mylib.aup"
 
-bar = foo()                 ; error: no bar and foo() in this scope
-mylib:bar = mylib:foo()     ; OK: bar and foo() are public in �mylib� scope
-mylib:_bar = mylib:_foo()       ; error: _bar and _foo() are private in �mylib� scope
+foo = baz()  ; error: no foo and baz() in this scope
+mylib:foo = mylib:baz()  ; OK: foo and baz() are public in “mylib” scope
+mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” scope
 ```
 
-*Sort* is synonym for _ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT.
+*Sort* is synonym for \_ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT, “*@*” is synonym for @CRLF, “*.*” is synonym for “&” operator. See [full list](synonyms.md)
 
 
-## How to use this wrapper
+## Extra options
 
-1. Place the �plys.au3� file in the �Include� folder (*C:\Program Files (x86)\AutoIt3\Include\*).
-1. Make in your project folder au3-file with this content
-    ```autoit
-    #include <plys.au3>
-    #plys "MainFileOfMyProject.aup"
-    
-    ; run me!
-    ```
-1. Then, if you have the files *module1.aup* and *module2.au3* with the same names
-    ```autoit
-    ; module1.aup
-    
-    dim bar, _bar
-    
-    func foo()
-        ; instructions
-    ```
-    ```autoit
-    ; module2.au3
-    
-    global $bar
-    
-    func foo()
-        ; instructions
-    endfunc
-    
-    func _foo()
-        ; instructions
-    endfunc
-    ```
-    you can write in your program like this
-    ```autoit
-    ; MainFileOfMyProject.aup
-    
-    #import "module1.aup"
-    #import "module2.au3"
-    
-    module1:bar = module2:foo()
-    ;module1:_bar = module2:_foo()      ; error because _bar and _foo() are private (with underscore prefix)
-    
-    #import "module2.au3"       ; re-importing files without "#include-once" will not lead to errors
-    ```
+You can use extra options by typing in the script one of this:
 
-You can turn off data exchange through standard input/output streams, then the shell process will not hang in memory, but then you will not be able to observe the output of your program in the output window of your development environment. You can do this by adding a line to the main file of your program
+```autoit
+#plys dollarprefix  ; refuse to use variables without “$” prefix
+#plys noconst  ; use default variable declarations behavior
+#plys noindent  ; ignore indentation but obligue to use “endif/wend/etc”.
+#plys noimport  ; refuse the import operator
+#plys nosynonyms  ; refuse the function and macro synonyms
+#plys lambda  ; enable anonymous functions (beta)
+```
+
+Also you can turn off data exchange through standard input/output streams, then the shell process will not hang in memory, but then you will not be able to observe the output of your program in the output window of your development environment. You can do this by adding a line to the main file of your program
+
 ```autoit
 #plys nostdio
 ```
 
-You can disable autorun of your program altogether, keeping only the generation of executable files, for example, for further compilation, adding the line to the main file of your program
-```autoit
-#plys norun
-```
 
-Then you can compile the program, specifying to the compiler the resulting file *main.aup.au3*, if the main file of your program is called *main.aup*.
+## Environment
 
-File processing is pretty dumb, so bugs are possible.
+After installation Plys alredy integrated to Windows shell. If you want to run a script by command line use
+
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/ErrorStdOut] <script path> [<arguments>]```
+
+If you want to translate a script to pure AutoIt code use
+
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Translate] <script path>```
+
+Try [AutoIt Plys package](https://github.com/NSUSpray/AutoItPlysSublime) for [Sublime Text](https://www.sublimetext.com/) which including syntax highlighting, comments toggling, auto-completions, build systems for run and compile, context help, Tidy and Include Helper command for AutoIt and AutoIt Plys.
+
+You can compile the script, specifying to the compiler the translating file *\*.aup.au3*.
 
 
 ## How it works
 
-The *plys.au3* file contains the code that is run immediately after the launch of your program: files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
+The *setup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (as Plys/plys.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
 
 
-## TODO
+## Future
 
-* #import **from** "*filename.aup*"
+* \#import "*filename.aup*" **noprefix**
+
     ```autoit
-    #import from "mylib.aup"
-    
-    bar = foo()     ; bar and foo will be taken from the "mylib.aup"
+    #import "mylib.aup" noprefix
+    bar = foo()
+    ; bar and foo will be taken from the "mylib.aup" without "mylib:" prefix
     ```
 
-* #import "*filename.aup*" as **alias**
+* \#import "*filename.aup*" as **alias**
+
     ```autoit
     #import "mylib.aup" as ml
-    
     ml:bar = ml:foo()       ; bar and foo will be taken from the "mylib.aup"
     ```
 
-* Optimize translation speed
+* function scope functions
+
+    ```autoit
+    func foo()
+        dim bar = "body"
+        func baz()  ; local scope function
+            return {quux: "begin" . @ . quux . @ . "end"}  ; lambda function
+        return baz()(bar)  ; returns "begin" & @CRLF & "body" & @CRLF & "end"
+
+    MsgBox(MB_OK, "begin/body/end", foo())
+    ```
+
+* array values in place
+
+    ```autoit
+    Display([1, 2, 3])
+    ```
