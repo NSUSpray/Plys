@@ -1,4 +1,4 @@
-﻿# All Synonyms
+# All Synonyms
 
 
 ## Array Management
@@ -148,35 +148,44 @@ WaitNotActive|WinWaitNotActive
 
 AutoIt Plys|AutoIt
 -|-
-@ReArray|$STR_REGEXPARRAYMATCH
-@ReArrayFull|$STR_REGEXPARRAYFULLMATCH
-@ReArrayGlobal|$STR_REGEXPARRAYGLOBALMATCH
-@ReArrayGlobalFull|$STR_REGEXPARRAYGLOBALFULLMATCH
-@ReMatch|$STR_REGEXPMATCH
+@ReArray|$STR\_REGEXPARRAYMATCH
+@ReArrayFull|$STR\_REGEXPARRAYFULLMATCH
+@ReArrayGlobal|$STR\_REGEXPARRAYGLOBALMATCH
+@ReArrayGlobalFull|$STR\_REGEXPARRAYGLOBALFULLMATCH
+@ReMatch|$STR\_REGEXPMATCH
 
 
 ## String Macros
 
 AutoIt Plys|AutoIt
 -|-
-@|@CRLF
-@CaseSense|$STR_CASESENSE
-@ChrSplit|$STR_CHRSPLIT
-@EndNotStart|$STR_ENDNOTSTART
-@EntireSplit|$STR_ENTIRESPLIT
-@NoCaseSense|$STR_NOCASESENSE
-@NoCaseSenseBasic|$STR_NOCASESENSEBASIC
-@NoCount|$STR_NOCOUNT
-@StripAll|$STR_STRIPALL
-@StripLeading|$STR_STRIPLEADING
-@StripSpaces|$STR_STRIPSPACES
-@StripTrailing|$STR_STRIPTRAILING
-@USC2|$STR_USC2
-@UTF16|$STR_UTF16
+@CaseSense|$STR\_CASESENSE
+@ChrSplit|$STR\_CHRSPLIT
+@EndNotStart|$STR\_ENDNOTSTART
+@EntireSplit|$STR\_ENTIRESPLIT
+@NoCaseSense|$STR\_NOCASESENSE
+@NoCaseSenseBasic|$STR\_NOCASESENSEBASIC
+@NoCount|$STR\_NOCOUNT
+@StripAll|$STR\_STRIPALL
+@StripLeading|$STR\_STRIPLEADING
+@StripSpaces|$STR\_STRIPSPACES
+@StripTrailing|$STR\_STRIPTRAILING
+@USC2|$STR\_USC2
+@UTF16|$STR\_UTF16
 
 
-## Window Macros
+## Other Macros
 
 AutoIt Plys|AutoIt
 -|-
+@|@CRLF
 @ActiveWin|WinGetHandle("\[ACTIVE\]")
+@CmdLine|$CmdLine
+
+
+## Operators
+
+AutoIt Plys|AutoIt
+-|-
+.|&
+.=|&=

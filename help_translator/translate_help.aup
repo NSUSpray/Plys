@@ -1,0 +1,241 @@
+#include <AutoItConstants.au3>
+#include <FileConstants.au3>
+#include "..\translate.aup"
+
+const ORIGIN_DIR = "origin\"
+const PROJECT_DIR = "project\"
+const originDirCanonicalSize = 51612814
+
+if not FileExists(ORIGIN_DIR) or _
+        DirGetSize(ORIGIN_DIR) <> originDirCanonicalSize then
+    Decompile()
+TranslateIndexAndToc()
+TranslateArticles("html\")
+Copy("autoit_11_210x72.jpg", PROJECT_DIR . "html\images\", FC_OVERWRITE)
+
+
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func Decompile()
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    const au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
+    const chm = "AutoIt.chm"
+    Echo('Decompilation of "' . au3exeDir . chm . '"...')
+    Copy(au3exeDir . chm, chm)
+
+    ; ; not decompiled files with names starts with $
+    ; DirCreate(ORIGIN_DIR)
+    ; RunWait("hh -decompile " . ORIGIN_DIR . " " . chm)
+    
+    DirRemove(ORIGIN_DIR, DIR_REMOVE)
+    const htm2exePath = '"C:\Program Files (x86)\htm2chm\htm2chm.exe"'
+    Run(htm2exePath . " -decompile " . chm)
+    const win = Wait("[TITLE:htm2chm; CLASS:TDecompForm]")
+    BlockInput(BI_DISABLE)
+    Activate(win)
+    WaitActive(win)
+    ControlFocus(win, "", "[CLASSNN:Edit2]")  ; Folder
+    ClipPut(@ScriptDir . "\" . ORIGIN_DIR)
+    ControlSend(win, "", "[CLASSNN:Edit2]", "^v")
+    BlockInput(BI_ENABLE)
+    ControlCommand(win, "", "[CLASSNN:TCheckBox2]", "UnCheck")  ; Explore output folder
+    ControlClick(win, "", ControlClick(win, "", "[CLASSNN:TButton4]"))  ; Start
+    WinClose(win)
+    while WinExists(win)
+        GUIGetMsg()  ; prevents hogging of the CPU
+
+    FileDelete(chm)
+    Echo(' Done.' . @)
+
+
+;=============================================================================
+func TranslateIndexAndToc()
+;=============================================================================
+    const indexFilename = "AutoIt3 Index.hhk"
+    const tocFilename = "AutoIt3 TOC.hhc"
+    const filenames = [indexFilename, tocFilename]
+    const patterns = [ _
+        ["(ConsoleWrite)()", "Echo"], _
+        ["(File)(" . _
+            "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" . _
+            "GetEncoding|GetLongName|GetShortcut|GetShortName|" . _
+            "GetSize|GetTime|GetVersion|Open|OpenDialog|Read|" . _
+            "ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|" . _
+            "SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|" . _
+            "WriteLine)", "$3"], _
+        ["(FileCreateNTFSLink)()", "CreateLink"], _
+        ["(FileFindFirstFile)()", "FirstFile"], _
+        ["(FileFindNextFile)()", "NextFile"], _
+        ["(DllStructCreate)()", "Struct"], _
+        ["(DllStructGetData)()", "StructGet"], _
+        ["(DllStructGetSize)()", "StructGetSize"], _
+        ["(DllStructGetPtr)()", "StructGetPtr"], _
+        ["(DllStructSetData)()", "StructSet"], _
+        ["(String)(" . _
+            "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" . _
+            "IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" . _
+            "Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" . _
+            "Upper)", "$3"], _
+        ["(StringRegExp)()", "ReFind"], _
+        ["(StringRegExpReplace)()", "ReReplace"], _
+        ["(IsDllStruct)()", "IsStruct"], _
+        ["(Win)(" . _
+            "Activate|Active|Flash|GetCaretPos|GetClassList|" . _
+            "GetClientSize|GetProcess|GetTitle|Kill|List|" . _
+            "MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" . _
+            "SetTitle|SetTrans|Wait|WaitActive|WaitClose|" . _
+            "WaitNotActive)", "$3"], _
+        ["(@CRLF)()", "@"], _
+        ["(_Array)(" . _
+        "Add|ColDelete|ColInsert|Combinations|Display|Extract|" . _
+        "FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" . _
+        "Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" . _
+        "Unique)", "$3"], _
+        ["(_Array1DToHistogram)()", "ToHistogram"], _
+        ["(_ArrayBinarySearch)()", "BinSearch"], _
+        ["(_ArrayConcatenate)()", "Concat"] _
+    ]
+    dim txt
+
+    Echo(@ . 'Translation of Index and TOC...' . @ . @)
+    for filename in filenames
+        txt = Read(ORIGIN_DIR . filename)
+
+        ; Translate extra symbols
+        txt = ReReplace(txt, "%20", " ")
+        if filename == tocFilename then
+            txt = Replace(txt, "&amp;", "&")
+
+        ; Add new names to Index and replace it in TOC
+        for i = 0 to UBound(patterns) - 1
+            txt = ReReplace(txt, '(?i)' . _
+                '(<LI> <OBJECT type="text/sitemap">\R'  . _
+                '(?:   )?<param name="Name" value=")' . patterns[i][0] . '(">\R' . _
+                '.+?\R(?:   )?</OBJECT>\R)', _
+                (filename==indexFilename?"$1$2$3$4":"") . "$1" . patterns[i][1] . "$4" _
+            )
+        ; TODO: Add var and func macros to Index
+
+        ; Sort articles in TOC
+        if filename == tocFilename then
+            _SortHeadingSubs(txt, "File, Directory and Disk Management")
+            _SortHeadingSubs(txt, "Process Management")
+            _SortHeadingSubs(txt, "String Management")
+            _SortHeadingSubs(txt, "Variables and Conversions")
+            _SortHeadingSubs(txt, "Window Management")
+            _SortHeadingSubs(txt, "Array Management")
+            _MoveGroup(txt, "Array Management", "Environment Management")
+            txt = Replace(txt, '"AutoIt"', '"AutoIt Plys"')
+        
+        FileDelete(PROJECT_DIR . filename)
+        Write(PROJECT_DIR . filename, txt)
+        Echo(ORIGIN_DIR . filename . @)
+    Echo(@ . 'Done' . @ . @)
+
+
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func TranslateArticles(dir)
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    const hsearch = FirstFile(ORIGIN_DIR . dir . "*")
+    dim file, encoding, txt
+    dim array, newCode
+    DirCreate(PROJECT_DIR . dir)
+    while True
+        name = NextFile(hsearch)
+        if @Error then exitloop
+        if InStr(GetAttrib(ORIGIN_DIR . dir . name), "D") then
+            TranslateArticles(dir . name . "\")
+        else
+            ; if not InStr(name, "x") then continueloop  ; DELETE ME
+            ; if name <> "lang_operators.htm" then continueloop  ; DELETE ME
+            file = Open(ORIGIN_DIR . dir . name)
+            encoding = GetEncoding(file)
+            txt = Read(ORIGIN_DIR . dir . name)
+            FileClose(file)
+            if Right(name, 4) = ".htm" then
+                TranslateHtml(txt)
+                array = ReFind(txt, _
+                    '(?s)<div class="codeSnippetContainerCode".*?>\R' . _
+                    '<pre>\R(.*?)\R</pre>\R</div>', @ReArrayGlobal)
+                if IsArray(array) then
+                    for code in array
+                        txt = Replace(txt, code, TranslateFormattedCode(code))
+                array = ReFind(txt, _
+                    '(?s)<p class="codebox">\R<span>(.*?)</span>\R</p>', _
+                    @ReArrayGlobal)
+                if IsArray(array) then
+                    for code in array
+                        txt = Replace(txt, code, TranslateFormattedCode(code))
+                txt = ReReplace(txt, _
+                    "(?i)\b(Examples\\\\HelpFile)(\\\\.*?\.)(au3)\b", _
+                    "HelpFile Examples$2aup")
+                switch TrimRight(name, 4)
+                    case "FileDirDisk Management", "String Management", _
+                            "Window Management", "Array Management"
+                        _SortHeadingTable(txt)
+                    case "index", "introduction"
+                        txt = Replace(txt, "<h1>AutoIt</h1>", "<h1>AutoIt Plys</h1>")
+                        txt = Replace(txt, "<h1>", _
+                            '<p class="center">Plys &#169;2017-2021 Vladimir Zevakhin</p>' . _
+                            '<p class="center"><a class="ext" href="' . _
+                            'https://github.com/NSUSpray/Plys/' . _
+                            '" target="_blank">AutoIt Plys Homepage</a>' . _
+                            '</p><h1>')
+                        continuecase
+                Echo(ORIGIN_DIR . dir . name . @)
+            elseif Right(name, 4) = ".css" then
+                txt = Replace(txt, "Courier New", "Consolas")
+            file = Open(PROJECT_DIR . dir . name, _
+                FO_OVERWRITE + FO_CREATEPATH + encoding)
+            Write(file, txt)
+            FileClose(file)
+            txt = ""
+    FileClose(hsearch)
+
+
+func _SortHeadingSubs(byref dim txt, headingName)
+    const origSubs = ReFind(txt, _
+        '(?:' . _
+            '<LI> <OBJECT type="text/sitemap">\R'  . _
+            '(?:   )?<param name="Name" value="' . headingName . '">\R' . _
+            '.+?\R(?:   )?</OBJECT>\R<UL>\R)' . _
+        '((?><LI>.+?\R.+?\R.+?\R(?:   )?</OBJECT>\R(?:<UL>(.|\R)+?</UL>\R)?)+)' . _
+        '(?:</UL>\R)', _
+        @ReArray)[0]
+    dim newSubs = _
+        ReFind(origSubs, '(?s)(<LI>.+?</OBJECT>(?:\R<UL>.+?</UL>)?\R)', _
+        @ReArrayGlobal)
+    Sort(newSubs)
+    newSubs = _ArrayToString(newSubs, "")
+    txt = Replace(txt, origSubs, newSubs)
+
+func _SortHeadingTable(byref dim txt)
+    const origTable = ReFind(txt, _
+        '(?ms)^<table>\R<tr>.*?</tr>\R(.*?\R)</table>\R', @ReArray)[0]
+    dim newTable = _
+        ReFind(origTable, '(?s)<tr>.*?</tr>\R', _
+            @ReArrayGlobal)
+    dim temp[UBound(newTable)][2]
+    for i = 0 to UBound(newTable) - 1
+        temp[i][0] = _
+            ReFind(newTable[i], '<a .+?>(\w+?)</a>', @ReArray)[0]
+        temp[i][1] = newTable[i]
+    Sort(temp)
+    for i = 0 to UBound(temp) - 1
+        newTable[i] = temp[i][1] 
+    newTable = _ArrayToString(newTable, "")
+    txt = Replace(txt, origTable, newTable)
+
+func _MoveGroup(byref dim txt, headingName, beforeHeading)
+    const group = ReFind(txt, _
+        '<LI> <OBJECT type="text/sitemap">\R'  . _
+        '(?:   )?<param name="Name" value="' . headingName . '">\R' . _
+        '.+?\R(?:   )?</OBJECT>\R<UL>\R' . _
+        '(?><LI>.+?\R.+?\R.+?\R(?:   )?</OBJECT>\R(?:<UL>(.|\R)+?</UL>\R)?)+' . _
+        '</UL>\R', _
+        @ReArray)[0]
+    txt = Replace(txt, group, "")
+    const record = ReFind(txt, '((<LI> <OBJECT type="text/sitemap">\R'  . _
+                '(?:   )?<param name="Name" value=")' . beforeHeading . '(">\R' . _
+                '.+?\R(?:   )?</OBJECT>\R))', @ReArray)[0]
+    const offset = @Extended - Len(record)
+    txt = Mid(txt, 1, offset - 1) . group . Mid(txt, offset)

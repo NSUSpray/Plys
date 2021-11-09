@@ -158,7 +158,7 @@ mylib:foo = mylib:baz()  ; OK: foo and baz() are public in “mylib” scope
 mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” scope
 ```
 
-*Sort* is synonym for \_ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT, “*@*” is synonym for @CRLF, “*.*” is synonym for “&” operator. See [full list](synonyms.md)
+*Sort* is synonym for \_ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT, “*@*” is synonym for @CRLF, “*.*” is synonym for “&” operator. See [full list](synonyms.md).
 
 
 ## Extra options
@@ -198,7 +198,7 @@ You can compile the script, specifying to the compiler the translating file *\*.
 
 ## How it works
 
-The *setup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (as Plys/plys.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
+The *setup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (as Plys\plys.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
 
 
 ## Future
@@ -221,13 +221,13 @@ The *setup.au3* file contains the code that will run immediately after the launc
 * function scope functions
 
     ```autoit
-    func foo()
-        dim bar = "body"
-        func baz()  ; local scope function
-            return {quux: "begin" . @ . quux . @ . "end"}  ; lambda function
-        return baz()(bar)  ; returns "begin" & @CRLF & "body" & @CRLF & "end"
+    func GlobalFunc()
+        dim var1 = "body"
+        func LocalFunc(var2)
+            return "begin" . @ . var2 . @ . "end"
+        return LocalFunc(LocalFunc(var1))
 
-    MsgBox(MB_OK, "begin/body/end", foo())
+    MsgBox(MB_OK, "begin/body/end", GlobalFunc())
     ```
 
 * array values in place

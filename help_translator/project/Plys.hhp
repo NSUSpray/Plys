@@ -1,0 +1,21 @@
+[OPTIONS]
+Compatibility=1.1 or later
+Compiled file=Plys.chm
+Contents file=AutoIt3 TOC.hhc
+Default Font=Segoe UI,9,0
+Default Window=Help Window
+Default topic=html\introduction.htm
+Display compile progress=Yes
+Enhanced decompilation=Yes
+Error log file=log.txt
+Full-text search=Yes
+Index file=AutoIt3 Index.hhk
+Language=0x409
+Title=Plys Help File
+
+[WINDOWS]
+Help Window="Plys Help (AutoIt v3.3.14.5)","AutoIt3 TOC.hhc","AutoIt3 Index.hhk",,,,,,,0x63520,,0x10280e,[0,0,1024,768],0x1000000,,,,,,0
+
+
+[INFOTYPES]
+

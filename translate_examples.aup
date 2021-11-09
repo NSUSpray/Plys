@@ -1,0 +1,21 @@
+#include "translate.aup"
+
+const sourceDir = Replace(@AutoItExe, "AutoIt3.exe", "") . "Examples\Helpfile\"
+const targetDir = "Helpfile Examples\"
+const hsearch = FirstFile(sourceDir . "*.au3")
+
+DirRemove(targetDir, DIR_REMOVE)
+DirCreate(targetDir)
+
+dim name, content, newPath, n = 0
+while True
+    name = NextFile(hsearch)
+    if @Error then exitloop
+    ; if name <> "Func[2].au3" then continueloop  ; DELETE ME
+    content = Read(sourceDir . name)
+    TranslateExamples(content)
+    newPath = targetDir . ReReplace(name, "3$", "p")
+    Write(newPath, content)
+    n += 1
+    Echo(n . ". " . '"' . newPath . '"' . @)
+FileClose(hsearch)

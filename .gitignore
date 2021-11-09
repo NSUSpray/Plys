@@ -1,1 +1,6 @@
 *.aup.au3
+Helpfile Examples
+help_translator/*.psd
+help_translator/origin
+help_translator/project/*
+!help_translator/project/Plys.hhp

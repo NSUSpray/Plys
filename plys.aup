@@ -596,6 +596,7 @@ for module = 1 to DepTable[0][0]
         reReplaceInMain(Text, "(?i)\bStructGetSize\b", "DllStructGetSize")
         reReplaceInMain(Text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
         reReplaceInMain(Text, "(?i)\bStructSet\b", "DllStructSetData")
+        reReplaceInMain(Text, "(?i)\bIsStruct\b", "IsDllStruct")
         ; File −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
         reReplaceInMain(Text, "(?i)\b(" . _
             "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" . _
@@ -640,6 +641,7 @@ for module = 1 to DepTable[0][0]
         reReplaceInMain(Text, "(?i)@ReMatch\b", "$STR_REGEXPMATCH")
         reReplaceInMain(Text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
         reReplaceInMain(Text, "(?i)@CmdLine\b", "$CmdLine")
+        reReplaceInMain(Text, "@(\W)", "@CRLF$1")
         ; _Array −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
         reReplaceInMain(Text, "(?i)\b(" . _
             "Add|ColDelete|ColInsert|Combinations|Display|Extract|" . _
@@ -655,7 +657,6 @@ for module = 1 to DepTable[0][0]
         ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
         reReplaceInMain(Text, "(\s)\.(\s)", "$1&$2")
         reReplaceInMain(Text, "\.=", "&=")
-        reReplaceInMain(Text, "@(\W)", "@CRLF$1")
         if module = 1 then
             Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
             Text = ReReplace(Text, "(?im)^(?!#au)", _
