@@ -183,7 +183,7 @@ Also you can turn off data exchange through standard input/output streams, then 
 
 ## Environment
 
-After installation Plys alredy integrated to Windows shell. If you want to run a script by command line use
+After installation Plys already integrated to Windows shell. If you want to run a script by command line use
 
 ```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/ErrorStdOut] <script path> [<arguments>]```
 

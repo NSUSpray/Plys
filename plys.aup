@@ -63,8 +63,11 @@ func Setup()
         FileDelete(templFilePath)
         Write(templFilePath, templFileData)
 
-        ; copy ico file
+        ; copy icon, help and examples
         Copy("aupscript.ico", au3exeDir . "Plys\aupscript.ico", FC_OVERWRITE)
+        Copy("Plys.chm", au3exeDir . "Plys\Plys.chm", FC_OVERWRITE)
+        DirCopy("Helpfile Examples", au3exeDir . "Plys\Helpfile Examples", _
+            FC_OVERWRITE)
         
         RegWrite("HKCR\.aup", "", "REG_SZ", "AutoItPlysScript")
         ; appoint file type class

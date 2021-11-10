@@ -1,6 +1,6 @@
 #include <AutoItConstants.au3>
 #include <FileConstants.au3>
-#include "..\translate.aup"
+#include "translate_lib.aup"
 
 const ORIGIN_DIR = "origin\"
 const PROJECT_DIR = "project\"
@@ -12,23 +12,27 @@ if not FileExists(ORIGIN_DIR) or _
 TranslateIndexAndToc()
 TranslateArticles("html\")
 Copy("autoit_11_210x72.jpg", PROJECT_DIR . "html\images\", FC_OVERWRITE)
+Compile()
 
 
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 func Decompile()
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
     const au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
-    const chm = "AutoIt.chm"
-    Echo('Decompilation of "' . au3exeDir . chm . '"...')
-    Copy(au3exeDir . chm, chm)
+    const chmFilename = "AutoIt.chm"
+    Echo('Decompilation of "' . au3exeDir . chmFilename . '"...')
+    Copy(au3exeDir . chmFilename, chmFilename)
 
+    ; ; Microsoft HTML Help method
     ; ; not decompiled files with names starts with $
+    ; const derompiler = 'hh'
     ; DirCreate(ORIGIN_DIR)
-    ; RunWait("hh -decompile " . ORIGIN_DIR . " " . chm)
+    ; RunWait(decompiler . " -decompile " . ORIGIN_DIR . " " . chmFilename)
     
+    ; htm2chm method
+    const derompiler = '"C:\Program Files (x86)\htm2chm\htm2chm.exe"'
     DirRemove(ORIGIN_DIR, DIR_REMOVE)
-    const htm2exePath = '"C:\Program Files (x86)\htm2chm\htm2chm.exe"'
-    Run(htm2exePath . " -decompile " . chm)
+    Run(derompiler . " -decompile " . chmFilename)
     const win = Wait("[TITLE:htm2chm; CLASS:TDecompForm]")
     BlockInput(BI_DISABLE)
     Activate(win)
@@ -43,8 +47,17 @@ func Decompile()
     while WinExists(win)
         GUIGetMsg()  ; prevents hogging of the CPU
 
-    FileDelete(chm)
+    FileDelete(chmFilename)
     Echo(' Done.' . @)
+
+
+func Compile()
+    const projectFilename = "Plys.hhp"
+    const compiler = "C:\Program Files (x86)\HTML Help Workshop\hhc.exe"
+    Copy(projectFilename, PROJECT_DIR . projectFilename)
+    RunWait(compiler . ' "' . PROJECT_DIR . projectFilename . '"')
+    FileMove(PROJECT_DIR . "Plys.chm", "..\Plys.chm", FC_OVERWRITE)
+    FileDelete(PROJECT_DIR . projectFilename)
 
 
 ;=============================================================================
