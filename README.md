@@ -1,8 +1,8 @@
-## <p align="center"><strong>Light Your AutoIt Code!</strong></p>
+﻿## <p align="center"><strong>Light Your AutoIt Code!</strong></p>
 
 <table>
 <tr><th>AutoIt</th><th>AutoIt Plys</th></tr>
-<tr><td>
+<tr><td><sub>
 
 ```autoit
 ; lib1.au3 −−−−−−−−
@@ -38,7 +38,7 @@ For $i = 1 To 5
 Next
 ```
 
-</td><td>
+</sub></td><td><sub>
 
 ```autoit
 ; lib1.aup −−−−−−−−
@@ -72,9 +72,11 @@ for i = 1 to 5
 
 
 
+
+
 ```
 
-</td></tr>
+</sub></td></tr>
 </table>
 
 # Plys – AutoIt language superset
