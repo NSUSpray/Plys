@@ -1,11 +1,13 @@
-﻿## <p align="center"><strong>Light Your AutoIt Code!</strong></p>
+﻿<div align="center">
+<h3>Light Your AutoIt Code!</h3>
+<br>
 
 <table>
 <tr><th>AutoIt</th><th>AutoIt Plys</th></tr>
-<tr><td><sub>
+<tr align="left"><td><sub>
 
 ```autoit
-; lib1.au3 −−−−−−−−
+; −−−−−−−−−−−−−−−−−−−− lib1.au3 −−−−−−−−−−−−−−−−−−−− ;
 
 #include <StringConstants.au3>
 
@@ -23,7 +25,8 @@ Func __Lib1_Merge(Const $a, Const $b, Const $c, $d="")
       ($d, $c, $STR_REGEXPARRAYGLOBALFULLMATCH))
 EndFunc
 
-; lib2.au3 −−−−−−−−
+
+; −−−−−−−−−−−−−−−−−−−− lib2.au3 −−−−−−−−−−−−−−−−−−−− ;
 
 #include "lib1.au3"
 
@@ -41,7 +44,7 @@ Next
 </sub></td><td><sub>
 
 ```autoit
-; lib1.aup −−−−−−−−
+; −−−−−−−−−−−−−−−−−−−− lib1.aup −−−−−−−−−−−−−−−−−−−− ;
 
 func merge*(a, b, c, dim d="")
   if d = "" then
@@ -53,7 +56,8 @@ func merge*(a, b, c, dim d="")
     ReReplace(d, "(" . b . ")" . b, "$1" . c) . _
     UBound(ReFind(d, c, @ReArrayGlobalFull))
 
-; lib2.aup −−−−−−−−
+
+; −−−−−−−−−−−−−−−−−−−− lib2.aup −−−−−−−−−−−−−−−−−−−− ;
 
 #import "lib1.aup"
 
@@ -78,6 +82,7 @@ for i = 1 to 5
 
 </sub></td></tr>
 </table>
+</div>
 
 # Plys – AutoIt language superset
 
@@ -97,33 +102,6 @@ This inconspicuous wrapper complements the AutoIt language with
 1. lighter [synonyms](synonyms.md) for functions, macros and operators as a rule using in large projects: for arrays, files and strings
 1. no “$”-prefix in variable names
 1. and **each of this is optional**
-
-
-## Setup
-
-**Requirements:** [AutoIt](https://www.autoitscript.com/site/autoit/downloads/) (minimum), [AutoIt Script Editor](https://www.autoitscript.com/site/autoit-script-editor/downloads/) (optionally).
-
-
-1. Download and unpack archive from releases.
-1. Double click the “setup.au3” file and follow to setup instructions.
-
-
-## First steps
-
-1. Right-click in the any folder and select `New > AutoIt Plys Script`.
-1. Right-click on the created file again and select `Edit Script`.
-1. At the bottom of the file type the following:
-
-    ```autoit
-    #include <MsgBoxConstants.au3>
-    dim msg = ""
-    for i = 1 to 10
-        msg .= "Hello World!" . @
-    msg = TrimRight(msg, 1)
-    MsgBox(MB_OK, "My First Plys Script", msg)
-    ```
-
-1. Save the script and double-click the file for run (or right-click the file and select `Run Script`).
 
 
 ## Overview
@@ -161,6 +139,33 @@ mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” sco
 ```
 
 *Sort* is synonym for \_ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT, “*@*” is synonym for @CRLF, “*.*” is synonym for “&” operator. See [full list](synonyms.md).
+
+
+## Setup
+
+**Requirements:** [AutoIt](https://www.autoitscript.com/site/autoit/downloads/) (minimum), [AutoIt Script Editor](https://www.autoitscript.com/site/autoit-script-editor/downloads/) (optionally).
+
+
+1. Download and unpack archive from [latest release](https://github.com/NSUSpray/Plys/releases/latest).
+1. Double click the “setup.au3” file and follow to setup instructions.
+
+
+## First steps
+
+1. Right-click in the any folder and select `New > AutoIt Plys Script`.
+1. Right-click on the created file again and select `Edit Script`.
+1. At the bottom of the file type the following:
+
+    ```autoit
+    #include <MsgBoxConstants.au3>
+    dim msg = ""
+    for i = 1 to 10
+        msg .= "Hello World!" . @
+    msg = TrimRight(msg, 1)
+    MsgBox(MB_OK, "My First Plys Script", msg)
+    ```
+
+1. Save the script and double-click the file for run (or right-click the file and select `Run Script`).
 
 
 ## Extra options
