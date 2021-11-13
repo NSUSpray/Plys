@@ -86,11 +86,11 @@ for i = 1 to 5
 
 # Plys – AutoIt language superset
 
-<p><strong># file scope in AutoIt programs</strong></p>
+<p><strong>• file scope in AutoIt programs</strong></p>
 
-<p><strong># module-private functions and variables</strong></p>
+<p><strong>• module-private functions and variables</strong></p>
 
-<p><strong># python-like import operator</strong></p>
+<p><strong>• python-like import operator</strong></p>
 
 
 This inconspicuous wrapper complements the AutoIt language with
@@ -101,6 +101,7 @@ This inconspicuous wrapper complements the AutoIt language with
 1. arguments of function are *const* by default, but with *dim* prefix it becomes variable
 1. lighter [synonyms](synonyms.md) for functions, macros and operators as a rule using in large projects: for arrays, files and strings
 1. no “$”-prefix in variable names
+1. one-line anonymous functions
 1. and **each of this is optional**
 
 
@@ -215,14 +216,14 @@ The *setup.au3* file contains the code that will run immediately after the launc
     ```autoit
     #import "mylib.aup" noprefix
     bar = foo()
-    ; bar and foo will be taken from the "mylib.aup" without "mylib:" prefix
+    ; bar and foo will be taken from the “mylib.aup” without “mylib:” prefix
     ```
 
 * \#import "*filename.aup*" as **alias**
 
     ```autoit
     #import "mylib.aup" as ml
-    ml:bar = ml:foo()       ; bar and foo will be taken from the "mylib.aup"
+    ml:bar = ml:foo()  ; bar and foo will be taken from the “mylib.aup”
     ```
 
 * function scope functions

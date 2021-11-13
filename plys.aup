@@ -1,4 +1,5 @@
 #include <MsgBoxConstants.au3>
+#include <TrayConstants.au3>
 #include <FileConstants.au3>
 
 global VERSION = "0.4.0"
@@ -16,9 +17,6 @@ func Setup()
     dim answer
     const au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
     const templFilePath = @WindowsDir . "\ShellNew\Template.aup"
-    ; const au3IconPath = RegRead("HKCR\AutoIt3Script\DefaultIcon", "")
-        ; const aupIconPath = ReReplace(au3IconPath, _
-        ;     PathPart(au3IconPath, "name", "ext") . "$", "aupscript.ico")
      
     if FileExists(au3exeDir . "Plys\plys.au3") then
         ; Uninstall
@@ -29,12 +27,14 @@ func Setup()
                 "Plys already installed. " . _
                 "Uninstalling Plys will delete existing data of plys.au3 file.")
             if answer <> IDOK then exit
-        ; FileDelete(au3exeDir . "plys.au3")
+        TraySetIcon("stop")
+        TraySetState(TRAY_ICONSTATE_FLASH)
         FileDelete(templFilePath)
-        ; FileDelete(aupIconPath)
         DirRemove(au3exeDir . "Plys", DIR_REMOVE)
         RegDelete("HKCR\.aup")
         RegDelete("HKCR\AutoItPlysScript")
+        TraySetState(TRAY_ICONSTATE_STOPFLASH)
+        TraySetIcon()
         if not silent then _
             MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
                 "Plys for AutoIt is uninstalled.")
@@ -46,6 +46,8 @@ func Setup()
                 "Install Plys for AutoIt?", _
                 "Plys features for AutoIt will install to this computer.")
             if answer <> IDOK then exit
+        TraySetIcon("stop")
+        TraySetState(TRAY_ICONSTATE_FLASH)
         
         ; RegWrite("HKLM\SOFTWARE\AutoIt v3", "PlysVersion", "REG_SZ", "1.0")
         DirCreate(au3exeDir . "Plys")
@@ -103,6 +105,8 @@ func Setup()
                 arg0 . " " . arg1 . ' /Translate "%1"')
         ; HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\AutoItv3
         
+        TraySetState(TRAY_ICONSTATE_STOPFLASH)
+        TraySetIcon()
         if not silent then _
             MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
                 "Plys for AutoIt is installed.")
@@ -115,7 +119,6 @@ func Setup()
 
 
 
-#include <TrayConstants.au3>
 #include <ProcessConstants.au3>
 #include <WinAPIHObj.au3>
 #include <WinAPIProc.au3>
@@ -696,24 +699,40 @@ if run_ then
     const pid = Run('"' . @AutoItExe . _
         (errorStdOut? '" /ErrorStdOut "' : '" "') . INPUTFILEPATH . '.au3" ' . _
         args, "", default, STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
-    const proc = _WinAPI_OpenProcess((_WinAPI_GetVersion() >= 6.0)? _
-        PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_QUERY_INFORMATION, 0, pid)
-    Opt("TrayIconHide", 1)
     if stdioExchange then
+        const proc = _WinAPI_OpenProcess((_WinAPI_GetVersion() >= 6.0)? _
+            PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_QUERY_INFORMATION, 0, pid)
         dim timer = TimerInit()
+        dim stdoutData, lastData, lastLoop = False
+        Opt("TrayIconHide", 1)
         while True
             StdinWrite(pid, ConsoleRead())
             ConsoleWriteError(StderrRead(pid))
-            ConsoleWrite(StdoutRead(pid))
-            if TimerDiff(timer) > 1000 then
-                if not ProcessExists(pid) then exitloop
+            if errorStdOut then
+                stdoutData = StdoutRead(pid)
+                if stdoutData <> "" then lastData = stdoutData
+                ConsoleWrite(stdoutData)
+            else
+                ConsoleWrite(StdoutRead(pid))
+            if lastLoop then exitloop
+            if TimerDiff(timer) > 300 then
+                if not ProcessExists(pid) then lastLoop = True
                 timer = TimerInit()
             GUIGetMsg()  ; prevents hogging of the CPU
         StdioClose(pid)
-    if _WinAPI_GetExitCodeProcess(proc) = 0 then
-        for targetPath in targetPaths
-            FileDelete(targetPath)
-    _WinAPI_CloseHandle(proc)
+        if _WinAPI_GetExitCodeProcess(proc) = 0 then
+            for targetPath in targetPaths
+                FileDelete(targetPath)
+        elseif errorStdOut then
+            lastData = ReFind(lastData, _
+                '[^"]*("?)([a-zA-Z]:\\.+?\\.+?\.au[p3])(\.au3)("? \()(\d+)' . _
+                '(\) : ==> )(.+?)\.: ?\R(.+\R)([^^]*)(\^ ERROR\R)$', @ReArray)
+            local line = ReadLine(lastData[1] . lastData[2], lastData[4])
+            lastData[2] = ""
+            lastData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
+            lastData[6] .= ": " . TrimLeft(lastData[7], Len(lastData[8]))
+            ConsoleWrite(_ArrayToString(lastData, ""))
+        _WinAPI_CloseHandle(proc)
 
 
 ;=============================================================================
