@@ -731,7 +731,7 @@ if run_ then
             lastData[2] = ""
             lastData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
             lastData[6] .= ": " . TrimLeft(lastData[7], Len(lastData[8]))
-            ConsoleWrite(_ArrayToString(lastData, ""))
+            ConsoleWrite(_ArrayToString(lastData, "", 0, 6))
         _WinAPI_CloseHandle(proc)
 
 
