@@ -1,196 +1,97 @@
-#include <MsgBoxConstants.au3>
-#include <TrayConstants.au3>
-#include <FileConstants.au3>
-
-global VERSION = "0.4.0"
-
-if @CmdLine[0] = 0 then
-    Setup()
-    exit
-
-
-; TODO: move setup to separate file
-;=============================================================================
-func Setup()
-;=============================================================================
-    const silent = False
-    dim answer
-    const au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
-    const templFilePath = @WindowsDir . "\ShellNew\Template.aup"
-     
-    if FileExists(au3exeDir . "Plys\plys.au3") then
-        ; Uninstall
-        ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        if not silent then
-            answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
-                "Uninstall Plys for AutoIt?", _
-                "Plys already installed. " . _
-                "Uninstalling Plys will delete existing data of plys.au3 file.")
-            if answer <> IDOK then exit
-        TraySetIcon("stop")
-        TraySetState(TRAY_ICONSTATE_FLASH)
-        FileDelete(templFilePath)
-        DirRemove(au3exeDir . "Plys", DIR_REMOVE)
-        RegDelete("HKCR\.aup")
-        RegDelete("HKCR\AutoItPlysScript")
-        TraySetState(TRAY_ICONSTATE_STOPFLASH)
-        TraySetIcon()
-        if not silent then _
-            MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
-                "Plys for AutoIt is uninstalled.")
-    else
-        ; Install
-        ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        if not silent then
-            answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
-                "Install Plys for AutoIt?", _
-                "Plys features for AutoIt will install to this computer.")
-            if answer <> IDOK then exit
-        TraySetIcon("stop")
-        TraySetState(TRAY_ICONSTATE_FLASH)
-        
-        ; RegWrite("HKLM\SOFTWARE\AutoIt v3", "PlysVersion", "REG_SZ", "1.0")
-        DirCreate(au3exeDir . "Plys")
-
-        ; copy this file
-        Copy(@ScriptFullPath, au3exeDir . "Plys\plys.au3", FC_OVERWRITE)
-        
-        ; copy template file
-        dim templFileData = Read(@WindowsDir . "\ShellNew\Template.au3")
-        templFileData = Replace(templFileData, "AutoIt", "AutoIt Plys")
-        templFileData = ReReplace(templFileData, _
-            "(AutoIt Plys Version:).*", "$1 " . VERSION)
-        templFileData = ReReplace(templFileData, _
-            "(Author:\s+)(myName)", "$1     $2")
-        FileDelete(templFilePath)
-        Write(templFilePath, templFileData)
-
-        ; copy icon, help and examples
-        Copy("aupscript.ico", au3exeDir . "Plys\aupscript.ico", FC_OVERWRITE)
-        Copy("Plys.chm", au3exeDir . "Plys\Plys.chm", FC_OVERWRITE)
-        DirCopy("Helpfile Examples", au3exeDir . "Plys\Helpfile Examples", _
-            FC_OVERWRITE)
-        
-        RegWrite("HKCR\.aup", "", "REG_SZ", "AutoItPlysScript")
-        ; appoint file type class
-            RegWrite("HKCR\.aup", "PerceivedType", "REG_SZ", "text")
-        ; appoint to Windows search content in as plain text
-            RegWrite("HKCR\.aup\PersistentHandler", "", "REG_SZ", _
-                "{5e941d80-bf96-11cd-b579-08002b30bfeb}")
-        RegWrite("HKCR\.aup\ShellNew", "FileName", "REG_SZ", "Template.aup")
-        
-        RegWrite("HKCR\AutoItPlysScript", "", "REG_SZ", "AutoIt Plys Script")
-        RegWrite("HKCR\AutoItPlysScript\DefaultIcon", "", "REG_SZ", _
-            au3exeDir . "Plys\aupscript.ico")
-        RegWrite("HKCR\AutoItPlysScript\Shell", "", "REG_SZ", "Run")
-        ; TODO: Compile–CompileX86
-        RegWrite("HKCR\AutoItPlysScript\Shell\Edit", "", "REG_SZ", "Edit Script")
-            const editCmd = RegRead("HKCR\AutoIt3Script\Shell\Edit\Command", "")
-            RegWrite("HKCR\AutoItPlysScript\Shell\Edit\Command", "", _
-                "REG_SZ", editCmd)
-        RegWrite("HKCR\AutoItPlysScript\Shell\Open", "", "REG_SZ", "Open Script")
-            const openCmd = RegRead("HKCR\AutoIt3Script\Shell\Open\Command", "")
-            RegWrite("HKCR\AutoItPlysScript\Shell\Open\Command", "", _
-                "REG_SZ", openCmd)
-        RegWrite("HKCR\AutoItPlysScript\Shell\Run", "", "REG_SZ", "Run Script")
-            const runCmd = RegRead("HKCR\AutoIt3Script\Shell\Run\Command", "")
-            const arg0 = ReReplace(runCmd, ' ".*', "")
-            const arg1 = Replace(arg0, "AutoIt3.exe", "Plys\plys.au3")
-            RegWrite("HKCR\AutoItPlysScript\Shell\Run\Command", "", "REG_SZ", _
-                arg0 . " " . arg1 . ' "%1" %*')
-        ; TODO: RunX64, RunX86
-        RegWrite("HKCR\AutoItPlysScript\Shell\Translate", "", "REG_SZ", _
-                "Translate to AutoIt Script")
-            RegWrite("HKCR\AutoItPlysScript\Shell\Translate\Command", "", "REG_SZ", _
-                arg0 . " " . arg1 . ' /Translate "%1"')
-        ; HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\AutoItv3
-        
-        TraySetState(TRAY_ICONSTATE_STOPFLASH)
-        TraySetIcon()
-        if not silent then _
-            MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
-                "Plys for AutoIt is installed.")
-    endif FileExists(au3exeDir . "Plys\plys.au3")
-
-
-
-;#############################################################################
-;#############################################################################
-
-
-
 #include <ProcessConstants.au3>
+#include <TrayConstants.au3>
 #include <WinAPIHObj.au3>
 #include <WinAPIProc.au3>
 #include <WinAPISys.au3>
+Opt("MustDeclareVars", 1)
 
-enum COMMENT_TYPE, DIRECTIVE_TYPE, STRING_TYPE, LAMBDA_TYPE, MAIN_TYPE
+enum CommentType, DirectiveType, StringType, LambdaType, MainType
+enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
-TraySetIcon("stop")
-TraySetState(TRAY_ICONSTATE_FLASH)
+; Translation settings
+const LambdaNameLen = 16
+const TabInSpaces = "    "
+const ModulePublicSuffixRegEx = "\*"
+const NewSuffixLen = 2
+const NameDelimRegEx = ":"
 
+; Default project settings
+dim StdioExchange = True
+dim LambdaFunctions = False
+dim NoDollarPrefix = True
+dim ConstByDefault = True
+dim CloseBlockByIndent = True
+dim ImportKeyword = True
+dim Synonyms = True
 
-#cs ==========================================================================
-#        Configuration
-#ce ==========================================================================
+; Significant values
+const RunMode = not (@CmdLine[1] == "/Translate")
+const ErrorStdOut = @CmdLine[1] == "/ErrorStdOut"
+const InputFilePath = _
+    (not RunMode or ErrorStdOut)? @CmdLine[2] : @CmdLine[1]
+const InputFileDir = PathPart(InputFilePath, "drive", "dir")
+const ABC = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", _
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", _
+    "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-const run_ = not (@CmdLine[1] == "/Translate")
-const errorStdOut = @CmdLine[1] == "/ErrorStdOut"
-global const INPUTFILEPATH = @CmdLine[((run_ and not errorStdOut)? 1 : 2)]
-dim stdioExchange = True
-
-; features
-global LAMBDAFUNCTIONS = False
-    const lambdaNameLen = 16
-dim noDollarPrefix = True
-global CONSTBYDEFAULT = True
-dim closeBlockByIndent = True
-    const tabInSpaces = "    "
-global IMPORTKEYWORD = True
-    global const MODULEPUBLICSUFFIX = "\*"  ; regular expression
-    const newSuffixLen = 2
-    const nameDelim = ":"  ; regular expression
-dim synonyms = True
-
-; get project settings
-dim Text = Read(INPUTFILEPATH)
-stdioExchange = stdioExchange and _
-    not ReFind(Text, "(?m)^\#plys nostdio")
-LAMBDAFUNCTIONS = LAMBDAFUNCTIONS or _
-    ReFind(Text, "(?m)^\#plys lambda")
-noDollarPrefix = noDollarPrefix and _
-    not ReFind(Text, "(?m)^\#plys dollarprefix")
-CONSTBYDEFAULT = CONSTBYDEFAULT and _
-    not ReFind(Text, "(?m)^\#plys noconst")
-closeBlockByIndent = closeBlockByIndent and _
-    not ReFind(Text, "(?m)^\#plys noindent")
-IMPORTKEYWORD = IMPORTKEYWORD and _
-    not ReFind(Text, "(?m)^\#plys noimport")
-synonyms = synonyms and _
-    not ReFind(Text, "(?m)^\#plys nosynonyms")
-
-
-#cs ==========================================================================
-#        Prepare
-#ce ==========================================================================
-
-#cs    DepTable[n+1][n+1]
-#            DepTable[0][0] = n                number of files
-#            DepTable[1..n][0]                  relative path to file “n”
-#            DepTable[0][1..n]                  names array of file “n”
-#            DepTable[i][j] = include        file “i” includes file “j”
-#ce
+; Table of dependencies
+;    Array size: DepTable[n+1][n+1]
+;    Array structure:
+;       DepTable[0][0] = n                number of files
+;       DepTable[1..n][0]                  relative path to file “n”
+;       DepTable[0][1..n]                  names array of file “n”
+;       DepTable[i][j] = include        file “i” includes file “j”
 dim DepTable[1][1] = [[0]]
-const rel_path = PathPart(INPUTFILEPATH, "name", "ext");ReFind _
-    ; (Text, '(?m)^\#plys\s+"(.+?)"', @ReArray)[0]
-GetDeps(DepTable, rel_path)
-if not run_ then ConsoleWrite("[Dependencies are get]" . @)
-dim targetPaths[0]
 
-if IMPORTKEYWORD then
-    dim ThruTable = DepTable
-    enum include = 2, mir_include = 1.5, import = 1
-    const directives = [import, include, mir_include]
+; Table of visibilities: which module sees names from which module
+; (based on DepTable)
+dim ThruTable
+
+dim Suffixes
+dim PathsToDeleteOnExit[0]
+
+
+Main()
+
+
+func Main*()
+    TraySetIcon("stop")
+    TraySetState(TRAY_ICONSTATE_FLASH)
+    GetProjectSettings()
+    const rel_path = PathPart(InputFilePath, "name", "ext")
+    GetDeps(DepTable, rel_path)
+    if not RunMode then ConsoleWrite("[Dependencies are get]" . @)
+    if ImportKeyword then
+        MakeThruTable()
+        Suffixes = MakeRandomStrings(ABC, DepTable[0][0], NewSuffixLen)
+    ProcessFiles()
+    DepTable = 0
+    if ImportKeyword then ThruTable = 0
+    if RunMode then RunResult()
+
+
+func GetProjectSettings()
+    const text = Read(InputFilePath)
+    StdioExchange = StdioExchange _
+        and not ReFind(text, "(?m)^\#plys nostdio")
+    LambdaFunctions = LambdaFunctions _
+        or ReFind(text, "(?m)^\#plys lambda")
+    NoDollarPrefix = NoDollarPrefix _
+        and not ReFind(text, "(?m)^\#plys dollarprefix")
+    ConstByDefault = ConstByDefault _
+        and not ReFind(text, "(?m)^\#plys noconst")
+    CloseBlockByIndent = CloseBlockByIndent _
+        and not ReFind(text, "(?m)^\#plys noindent")
+    ImportKeyword = ImportKeyword _
+        and not ReFind(text, "(?m)^\#plys noimport")
+    Synonyms = Synonyms _
+        and not ReFind(text, "(?m)^\#plys nosynonyms")
+
+
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func MakeThruTable()
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    ThruTable = DepTable
     
     ; capture dependencies throught
     dim changed
@@ -199,496 +100,478 @@ if IMPORTKEYWORD then
         for row = 1 to ThruTable[0][0]
             for col = 1 to ThruTable[0][0]
                 switch ThruTable[row][col]
-                    case include ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−
+                    case IncludeDep ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−
                         ; “mirror” rule
-                        if ThruTable[col][row] <= import then
-                            ThruTable[col][row] = mir_include
+                        if ThruTable[col][row] <= ImportDep then
+                            ThruTable[col][row] = MirIncludeDep
                             changed = True
                         ; “chain” rule for column
                         for y = 1 to ThruTable[0][0]
-                            if y <> col and _
-                                ThruTable[y][row] > ThruTable[y][col] _
+                            if y <> col _
+                                and ThruTable[y][row] > ThruTable[y][col] _
                             then
                                 ThruTable[y][col] = ThruTable[y][row]
                                 changed = True
-                    case import ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+                    case ImportDep ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−
                         ; “chain” rule for column
                         for y = 1 to ThruTable[0][0]
-                            if y <> col and _
-                                ThruTable[y][row] > import and _
-                                ThruTable[y][col] = "" _
+                            if y <> col _
+                                and ThruTable[y][row] > ImportDep _
+                                and ThruTable[y][col] = "" _
                             then
-                                ThruTable[y][col] = import
+                                ThruTable[y][col] = ImportDep
                                 changed = True
                 endswitch
             next col
         next row
     until not changed
-    
-    ; make suffixes
-    const abc = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", _
-        "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", _
-        "X", "Y", "Z", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    const abcLen = UBound(abc)
-    dim suffixes[DepTable[0][0] + 1]
-    dim suffix
-    suffixes[0] = DepTable[0][0]
-    for module = 1 to suffixes[0]
+
+
+func MakeRandomStrings(abc, num, stringsLen)
+    dim strings[num + 1]
+    dim str
+    strings[0] = num
+    for module = 1 to num
         do
-            suffix = ""
-            for i = 1 to newSuffixLen
-                suffix .= abc[Random(0, abcLen - 1, 1)]
-        until Search(suffixes, suffix) = -1
-        suffixes[module] = suffix
-    
-endif IMPORTKEYWORD
+            str = ""
+            for i = 1 to stringsLen
+                str .= abc[Random(0, UBound(abc) - 1, 1)]
+        until Search(strings, str) = -1
+        strings[module] = str
+    return strings
 
 
-#cs ==========================================================================
-#        Process Files
-#ce ==========================================================================
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func ProcessFiles()
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    dim sourcePath, targetPath, isPlysFile
+    dim text  ; storage for processing file data
 
-dim sourcePath, targetPath, isPlysFile
-dim lambdas, name, expr, n  ; lambda
-dim i, j, split_  ; lambda, indent
-dim names  ; lambda, no dollar prefix, import
-dim args  ; lambda, const by default
-dim prefix  ; lambda, import
-dim comments, indentSize, prevIndentSize, statement, _
-    sttmnt, closer, indent  ; indent
-dim varsDeclars, publicNames, newVarsDeclar  ; asterisks
-dim funcDeclars, newFuncDeclar  ; const by default
-dim rel_dirSlash, relrel_dep, foundInPrev  ; import
-dim fix, filename, varPrefix, isPublic  ; import
+    for module = 1 to DepTable[0][0]
+        sourcePath = InputFileDir . "\" . DepTable[module][0]
+        targetPath = PathPart(sourcePath, "drive", "ext") . ".au3"
+        if FileExists(targetPath) then
+            if GetTime(targetPath, 0, 1) > GetTime(sourcePath, 0, 1) _
+                    and False then  ; because name suffixes will be changed
+                    ; TODO: generate stable suffixes – with /Fast option
+                if RunMode then Add(PathsToDeleteOnExit, targetPath)
+                continueloop  ; file not changed – skip this
+        isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
+        text = Read(sourcePath)
 
-for module = 1 to DepTable[0][0]
-    sourcePath = PathPart(INPUTFILEPATH, "drive", "dir") . "\" . _
-        DepTable[module][0]
-    targetPath = PathPart(sourcePath, "drive", "ext") . ".au3"
-    if FileExists(targetPath) then
-        if GetTime(sourcePath, 0, 1) > GetTime(targetPath, 0, 1) or _
-                True then  ; because name suffixes will be changed
-                ; TODO: generate suffixes on file path only
-            FileDelete(targetPath)
+        if isPlysFile then        
+            if LambdaFunctions then _ProcessLambdas(text, module)
+            if CloseBlockByIndent then _CloseBlocks(text)
+            if NoDollarPrefix then _AddVarPrefixes(text, DepTable[0][module])
+            _RemoveAsterisks(text)
+            if ConstByDefault then _ToggleDimConst(text)
+        if ImportKeyword then _ProcessImports(text, module, isPlysFile)
+        if Synonyms and isPlysFile then
+            _RenameSynonyms(text, module = 1)
+
+        if IsArray(text) then text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+        FileDelete(targetPath)
+        Write(targetPath, text)
+        if RunMode then
+            SetAttrib(targetPath, "+H")
+            Add(PathsToDeleteOnExit, targetPath)
         else
-            if run_ then
-                SetAttrib(targetPath, "+H")
-                Add(targetPaths, targetPath)
+            ConsoleWrite('[Writed] "' . targetPath . '"' . @)
+    next module
+
+
+func _ProcessLambdas(dim byref text, module)
+    text = __SplitStatements(text)
+    dim n = 0, lambdas = ""
+    dim name, args, expr
+    dim names[UBound(text)]
+    for i = 0 to UBound(text) - 1
+        if text[i][1] <> LambdaType then continueloop
+        do
+            name = "_"
+            for j = 1 to LambdaNameLen
+                name .= ABC[Random(0, UBound(ABC) - 1, 1)]
+        until Search(names, name) = -1
+        names[n] = name
+        n += 1
+        args = ReFind(text[i][0], "(?:\{)([^:]*)", @ReArray)[0]
+        expr = ReFind(text[i][0], "(?::)([^\}]+)", @ReArray)[0]
+        text[i][0] = name
+        text[i][1] = MainType
+        lambdas .= @ _
+            . "func " . name . "(" . args . ")" . @ _
+                . TabInSpaces . "return " . expr . @ _
+            . "endfunc" . @
+    redim names[n]
+    Add(DepTable[0][module], names)
+    text = _ArrayToString(text, "", -1, -1, "", 0, 0) . lambdas
+
+
+;=============================================================================
+func _CloseBlocks(dim byref text)
+;=============================================================================
+    if IsArray(text) then text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+    text = ReReplace(text, "(^|\G)\t", TabInSpaces)
+    text = Split(text . @ . "end.", @, @EntireSplit + @NoCount)
+
+    dim i = -1, j  ; text line indexes
+    dim comments = False
+    dim indentSize, prevIndentSize = 0
+    dim statement, sttmnt
+    dim split_
+    dim closer, indent
+    dim stack[0]
+    while i + 1 <= UBound(text) - 1
+        i += 1
+        
+        ; skip comments and directives (and empty lines)
+        if ReFind(text[i], "^\s*($|;)") then continueloop
+        if comments then
+            if ReFind(text[i], "(?i)^\s*(\#ce|\#comments-end)") then
+                comments = False
             continueloop
-    isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
-    Text = Read(sourcePath)
-    
-    ; Anonymous functions
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if LAMBDAFUNCTIONS and isPlysFile then
-        split_ = SplitStatements(Text)
-        n = 0
-        lambdas = ""
-        dim names[UBound(split_)]
-        for i = 0 to UBound(split_) - 1
-            if split_[i][1] <> LAMBDA_TYPE then continueloop
-            do
-                name = "_"
-                for j = 1 to lambdaNameLen
-                    name .= abc[Random(0, abcLen - 1, 1)]
-            until Search(names, name) = -1
-            names[n] = name
-            n += 1
-            args = ReFind(split_[i][0], "(?:\{)([^:]*)", @ReArray)[0]
-            expr = ReFind(split_[i][0], "(?::)([^\}]+)", @ReArray)[0]
-            split_[i][0] = name
-            split_[i][1] = MAIN_TYPE
-            lambdas .= @ . _
-                    "func " . name . "(" . args . ")" . @ . _
-                        tabInSpaces . "return " . expr . @ . _
-                    "endfunc" . @
-        redim names[n]
-        Add(DepTable[0][module], names)
-        Text = _ArrayToString(split_, "", -1, -1, "", 0, 0) . lambdas
-
-    ; Close block by indent
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if closeBlockByIndent and isPlysFile then
-        if IsArray(Text) then Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-        Text = ReReplace(Text, "(^|\G)\t", tabInSpaces)
-        Text = Split(Text . @ . "end.", @, @EntireSplit + @NoCount)
-
-        i = -1
-        comments = False
-        prevIndentSize = 0
-        dim stack[0]
-        while i + 1 <= UBound(Text) - 1
-            i += 1
-            
-            ; skip comments and directives (and empty lines)
-            if ReFind(Text[i], "^\s*($|;)") then continueloop
-            if comments then
-                if ReFind(Text[i], _
-                        "(?i)^\s*(\#ce|\#comments-end)") then _
-                    comments = False
-                continueloop
-            if ReFind _
-                    (Text[i], "(?i)^\s*(\#cs|\#comments-start)") then
-                comments = True
-                continueloop
-            ; if ReFind(Text[i], "^\s*\#") then continueloop
-            
-            if run_ and _  ;Mod(i + 1, 5) = 0 and _
-                    not ReFind(Text[i], "^\s*$") then _
-                Text[i] .= @TAB . @TAB . "; #" . (i + 1)
-            
-            indentSize = Len _
-                (ReReplace(Text[i], "^( *).*", "$1"))
-            statement = _
-                ReReplace(Text[i], "^ *(\w*).*", "$1")
-            if ReFind(statement, "(?i)^(else)?if$") then
-                j = i
-                while True
-                    split_ = SplitStatements(Text[j])
-                    if reFindInMain(split_, "(?i)\sthen(\s|$)") then _  ; with “then”
-                        exitloop
-                    j += 1
-                if reFindInMain(split_, "(?i)\sthen\h.*?\S") then _  ; has “then” expression
-                    statement = ""
-            if indentSize < prevIndentSize then
-                sttmnt = statement
-                for is = indentSize to prevIndentSize - 1
-                    if is > UBound(stack) - 1 then exitloop
-                    switch stack[is]
-                        case "if"
-                            if ReFind _
-                                    (sttmnt, "(?i)^else(if)?$") then
-                                sttmnt = ""
-                                continueloop
-                            closer = "endif"
-                        case "elseif"
-                            if ReFind _
-                                    (sttmnt, "(?i)^else(if)?$") then _
-                                continueloop
-                            closer = "endif"
-                        case "else"
-                            closer = "endif"
-                        case "select", "switch", "with", "func"
-                            closer = "end" . stack[is]
-                        case "for"
-                            closer = "next"
-                        case "while"
-                            closer = "wend"
-                        case else
+        if ReFind(text[i], "(?i)^\s*(\#cs|\#comments-start)") then
+            comments = True
+            continueloop
+        ; if ReFind(text[i], "^\s*\#") then continueloop
+        
+        if RunMode and not ReFind(text[i], "^\s*$") then
+            text[i] .= @tab . @tab . "; #" . (i + 1)
+        
+        indentSize = Len(ReReplace(text[i], "^( *).*", "$1"))
+        statement = ReReplace(text[i], "^ *(\w*).*", "$1")
+        if ReFind(statement, "(?i)^(else)?if$") then
+            j = i
+            while True
+                split_ = __SplitStatements(text[j])
+                if __ReFindInMain(split_, "(?i)\sthen(\s|$)") then  ; with then
+                    exitloop
+                j += 1
+            if __ReFindInMain(split_, "(?i)\sthen\h.*?\S") then  ; then expr.
+                statement = ""
+        if indentSize < prevIndentSize then
+            sttmnt = statement
+            for is = indentSize to prevIndentSize - 1
+                if is > UBound(stack) - 1 then exitloop
+                switch stack[is]
+                    case "if"
+                        if ReFind(sttmnt, "(?i)^else(if)?$") then
+                            sttmnt = ""
                             continueloop
-                    endswitch
-                    indent = ""
-                    for k = 1 to is
-                        indent .= " "
-                    if ReFind(Text[i], "^" . indent . closer . "\b") then ;"\s*(;|$)") then
-                        ; FIXME: must replace even if disabled closeBlockByIndent
-                        Text[i] = Replace(Text[i], closer, closer . ";")
+                        closer = "endif"
+                    case "elseif"
+                        if ReFind(sttmnt, "(?i)^else(if)?$") then continueloop
+                        closer = "endif"
+                    case "else"
+                        closer = "endif"
+                    case "select", "switch", "with", "func"
+                        closer = "end" . stack[is]
+                    case "for"
+                        closer = "next"
+                    case "while"
+                        closer = "wend"
+                    case else
+                        continueloop
+                endswitch
+                indent = ""
+                for k = 1 to is
+                    indent .= " "
+                if ReFind(text[i], "^" . indent . closer . "\b") then
+                    ; FIXME: must be replace even if disabled closeBlock
+                    text[i] = Replace(text[i], closer, closer . ";")
+                else
+                    text[i] = indent . closer . @ . text[i]
+            next is
+            redim stack[indentSize]
+        endif
+        switch statement
+            case "if", "elseif"
+                i = j
+                continuecase
+            case "else", "select", "switch", "for", "while", "with", "func"
+                redim stack[indentSize + 1]
+                stack[indentSize] = statement
+        prevIndentSize = indentSize
+    wend
+    text = _ArrayToString(text, @)
+    text = ReReplace(text, "(?m)^end\.\s*(;.*)?$", "")
+
+
+func _AddVarPrefixes(dim byref text, dim names)
+    text = __SplitStatements(text)
+    if IsArray(names) then
+        names = _ArrayToString(names)
+        names = ReReplace(names, "\|\$\w+\*?", "")  ; funcs only
+        names = ReReplace(names, "\$\w+\*?\|", "")  ; funcs only
+        if names <> "" then names = "|" . names
+    else
+        names = ""
+    ; FIXME: call function, stored in variable: $foo($bar, $buz)
+    __ReReplaceInMain(text, "(?i)" _
+        . "(?(?=" _  ; if look ahead one of this
+            . "\b(byref|const|continuecase|continueloop|default|dim|do|" _
+            . "enum|exit|exitloop|false|for|to|step|next|for|in|func|return|" _
+            . "endfunc|global|if|then|elseif|else|endif|local|null|redim|" _
+            . "select|case|endselect|static|switch|endswitch|true|volatile|" _
+            . "with|endwith|while|wend|and|or|not|_" . names . ")\b" _
+        . ")" _  ; then replace
+            . " " _
+        . "|" _  ; else it’s variable: replace
+            . "(?<![\w@$])" _  ; ← previous isn’t [\w@$]
+            . "[A-Za-z_]\w*" _  ; ↓ next isn’t call, scope (or continuation)
+            . "(?!\w*(\s*\(|:[A-Za-z_]))" _  ;|\s*_\W))" _
+        . ")", _
+        "\$$0")  ; by this
+
+
+func _RemoveAsterisks(dim byref text)
+    dim varsDeclars
+    if IsArray(text) then _
+        text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+    text = ReReplace(text, "(?im)^(\s*func\s+)([A-Za-z_]\w*)" _
+        . ModulePublicSuffixRegEx, "$1$2")
+    if ConstByDefault then
+        varsDeclars = ReFind(text, _
+            "(?im)^(?:\s*global\s+)?(?:dim|const|enum)\s+(.*)", _
+            @ReArrayGlobal)
+    else
+        varsDeclars = ReFind(text, "(?im)^\s*global\s+(.*)", @ReArrayGlobal)
+    if IsArray(varsDeclars) then
+        ; FIXME: "const $bar = foo(1, 2)" → ["$bar = foo(1", " 2)"]
+        dim newVarsDeclar, publicNames
+        for varsDeclar in varsDeclars
+            newVarsDeclar = varsDeclar
+            for varDeclar in Split(varsDeclar, ",", @NoCount)
+                publicNames = ReFind(varDeclar, _
+                    "(\$\w+" . ModulePublicSuffixRegEx . ")", _
+                    @ReArrayGlobal)
+                if IsArray(publicNames) then
+                    ; Display(publicNames)
+                    newVarsDeclar = ReReplace(newVarsDeclar, _
+                        "\" . TrimRight(publicNames[0], 1) _
+                        . ModulePublicSuffixRegEx, _
+                        "\" . TrimRight(publicNames[0], 1))
+            if newVarsDeclar <> varsDeclar then _
+                text = Replace(text, varsDeclar, newVarsDeclar)
+
+
+func _ToggleDimConst(dim byref text)
+    if IsArray(text) then _
+        text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+    text = ReReplace(text, _
+        "(?im)^(const|enum|static)\s+\$", "global $0")
+    text = ReReplace(text, _
+        "(?im)^(\s+)((?:const|enum|static)\s+\$)", "$1local $2")
+    text = ReReplace(text, _
+        "(?im)^dim(\s+\$)", "global$1")
+    text = ReReplace(text, _
+        "(?im)^(\s+)dim(\s+\$)", "$1local$2")
+    dim funcDeclars = ReFind(text, "(?im)^\s*func\s+.*$", @ReArrayGlobal)
+    if IsArray(funcDeclars) then
+        dim newFuncDeclar, args
+        for funcDeclar in funcDeclars
+            newFuncDeclar = funcDeclar
+            args = ReReplace(funcDeclar, _
+                "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
+            if args = "" then continueloop
+            args = Split(args, ",", @NoCount)
+            for arg in args  ; insert “const”
+                if not ReFind(arg, "\b(const|dim)\b") then
+                    newFuncDeclar = _
+                        Replace(newFuncDeclar, arg, " const " . arg)
+            newFuncDeclar = _
+                ReReplace(newFuncDeclar, "\bdim\s+", "")  ; delete “dim”
+            text = Replace(text, funcDeclar, newFuncDeclar)
+
+
+func _ProcessImports(dim byref text, module, isPlysFile)
+    if IsArray(text) then text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+    if isPlysFile then __PreventReimporting(text, module)
+            
+    ; replace “#include/#import "path\name.ext"”
+    ; with “#include "path\%target_prefix%name.ext.au3"”
+    text = ReReplace(text, _
+        '(?m)^\#(include' . (isPlysFile? "|import" : "") _
+        . ')\s+"(.*\\)?(.*?)"(.*)$', _
+        '#include "$2$3\.au3"$4')
+    
+    text = __SplitStatements(text)
+    __ReplaceOwnNames(text, module)
+    __ReplaceNotOwnNames(text, module)
+
+
+func __PreventReimporting(dim byref text, module)
+; comment #import if module including or importing alredy been
+    dim rel_dirSlash, relrel_dep, foundInPrev
+    for dep = 1 to DepTable[0][0]
+        if DepTable[module][dep] <> ImportDep then continueloop
+        rel_dirSlash = PathPart(DepTable[module][0], "dir")
+        relrel_dep = DepTable[dep][0]
+        if rel_dirSlash <> "" then
+            relrel_dep = Replace(relrel_dep, rel_dirSlash, "")
+        relrel_dep = ReReplace(relrel_dep, "[\\\.\^\$\[\(\{\+\#]", "\\$0")
+        text = ReReplace(text, _
+            '(?m)^\#(include|import)\s+[<"]' . relrel_dep . '[>"]', ";PLYS $0")
+        foundInPrev = False
+        for prev = 1 to module - 1
+            if DepTable[prev][dep] then
+                foundInPrev = True
+                exitloop
+        if not foundInPrev then  ; uncomment first
+            text = ReReplace(text, '(?m)^;PLYS (\#(include|import)\s+[<"]' _
+                . relrel_dep . '[>"])', "$1", 1)
+
+
+func __ReplaceOwnNames(dim byref text, module)
+    const names = DepTable[0][module]
+    if DepTable[0][0] > 1 and IsArray(names) then
+        ; purified filename
+        dim prefix = PathPart(DepTable[module][0], "dir", "name")
+        prefix = ReReplace(prefix, "[^\w]", "_")
+        ; TODO: загнать имена в шаблон (имя|имя|…) и заменить одним махом
+        for name in names
+            if Left(name, 1) = "$" then  ; is variable
+                __ReReplaceInMain(text, _
+                    "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
+                        . TrimLeft(name, 1) . ")([^\w""'])", _
+                    "$1\$" . prefix . "_$2__" . Suffixes[module] . "$3")
+            else        ; is function
+                prefix = ReReplace(prefix, "^[0-9]", "_$1")
+                __ReReplaceInMain(text, _
+                    "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
+                    . ")([^\w""'])", _
+                    "${1}" . prefix . "_$2__" . Suffixes[module] . "$3")
+
+
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func __ReplaceNotOwnNames(dim byref text, module)
+; replace names from ThruTable[0][dep] in module file
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    const depTypes = [ImportDep, IncludeDep, MirIncludeDep]
+    dim names = DepTable[0][module]
+    dim filename, prefix, varPrefix, isPublic
+    for depType in depTypes
+        for dep = 1 to DepTable[0][0]
+            if ThruTable[module][dep] <> depType then continueloop
+            names = DepTable[0][dep]
+            if IsArray(names) then
+                ; purified filename
+                filename = PathPart(DepTable[dep][0], "name")
+                filename = ReReplace(filename, "[^\w]", "_")
+                prefix = PathPart(DepTable[dep][0], "dir")
+                prefix = ReReplace(prefix, "[^\w]", "_")
+                prefix .= filename
+                for name in names
+                    if Left(name, 1) = "$" then  ; is variable
+                        name = TrimLeft(name, 1)
+                        varPrefix = "\$"
                     else
-                        Text[i] = indent . closer . @ . Text[i]
-                next is
-                redim stack[indentSize]
-            endif
-            switch statement
-                case "if", "elseif"
-                    i = j
-                    continuecase
-                case "else", "select", "switch", _
-                        "for", "while", "with", "func"
-                    redim stack[indentSize + 1]
-                    stack[indentSize] = statement
-            prevIndentSize = indentSize
-        wend
-        Text = _ArrayToString(Text, @)
-        Text = ReReplace(Text, "(?m)^end\.\s*(;.*)?$", "")
-    endif closeBlockByIndent and isPlysFile
-    
-    ; No dollar prefix for variables
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if noDollarPrefix and isPlysFile then
-        Text = SplitStatements(Text)
-        names = DepTable[0][module]
-        if IsArray(names) then
-            names = _ArrayToString(names)
-            names = ReReplace(names, "\|\$\w+\*?", "")  ; funcs only
-            names = ReReplace(names, "\$\w+\*?\|", "")  ; funcs only
-            if names <> "" then names = "|" . names
-        else
-            names = ""
-        ; FIXME: call function, stored in variable: $foo($bar, $buz)
-        reReplaceInMain(Text, "(?i)" . _
-            "(?(?=" . _  ; if look ahead one of this
-                "\b(byref|const|continuecase|continueloop|default|dim|" . _
-                "do|until|enum|exit|exitloop|false|for|to|step|next|" . _
-                "for|in|func|return|endfunc|global|if|then|elseif|else|" . _
-                "endif|local|null|redim|select|case|endselect|static|" . _
-                "switch|endswitch|true|volatile|with|endwith|while|" . _
-                "wend|and|or|not|_" . names . ")\b" . _
-            ")" . _  ; then replace
-                " " . _
-            "|" . _  ; else it’s variable: replace
-                "(?<![\w@$])" . _  ; previous isn’t [\w@$]
-                "[A-Za-z_]\w*" . _
-                "(?!\w*(\s*\(|:[A-Za-z_]|\s*_\W))" . _  ; next isn’t call, scope or continuation
-            ")", _
-            "\$$0")  ; by this
-    
-    ; Remove asterisks in declarations
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if isPlysFile then
-        if IsArray(Text) then _
-            Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-        Text = ReReplace(Text, "(?im)^(\s*func\s+)([A-Za-z_]\w*)" . _
-            MODULEPUBLICSUFFIX, "$1$2")
-        if CONSTBYDEFAULT then
-            varsDeclars = ReFind(Text, _
-                "(?im)^(?:\s*global\s+)?(?:dim|const|enum)\s+(.*)", _
-                @ReArrayGlobal)
-        else
-            varsDeclars = ReFind _
-                (Text, "(?im)^\s*global\s+(.*)", @ReArrayGlobal)
-        if IsArray(varsDeclars) then
-            ; FIXME: "const $bar = foo(1, 2)" → ["$bar = foo(1", " 2)"]
-            for varsDeclar in varsDeclars
-                newVarsDeclar = varsDeclar
-                for varDeclar in Split(varsDeclar, ",", @NoCount)
-                    publicNames = ReFind(varDeclar, _
-                        "(\$\w+" . MODULEPUBLICSUFFIX . ")", _
-                        @ReArrayGlobal)
-                    if IsArray(publicNames) then
-                        ; Display(publicNames)
-                        newVarsDeclar = ReReplace(newVarsDeclar, _
-                            "\" . TrimRight(publicNames[0], 1) . _
-                            MODULEPUBLICSUFFIX, _
-                            "\" . TrimRight(publicNames[0], 1))
-                if newVarsDeclar <> varsDeclar then _
-                    Text = Replace(Text, varsDeclar, newVarsDeclar)
-                            
-    ; Const by default
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if CONSTBYDEFAULT and isPlysFile then
-        if IsArray(Text) then _
-            Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-        Text = ReReplace _
-            (Text, "(?im)^(const|enum|static)\s+\$", "global $0")
-        Text = ReReplace _
-            (Text, "(?im)^(\s+)((?:const|enum|static)\s+\$)", "$1local $2")
-        Text = ReReplace _
-            (Text, "(?im)^dim(\s+\$)", "global$1")
-        Text = ReReplace _
-            (Text, "(?im)^(\s+)dim(\s+\$)", "$1local$2")
-        funcDeclars = ReFind _
-            (Text, "(?im)^\s*func\s+.*$", @ReArrayGlobal)
-        if IsArray(funcDeclars) then
-            for funcDeclar in funcDeclars
-                newFuncDeclar = funcDeclar
-                args = ReReplace _
-                    (funcDeclar, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
-                if args = "" then continueloop
-                args = Split(args, ",", @NoCount)
-                for arg in args        ; insert “const”
-                    if not ReFind(arg, "\b(const|dim)\b") then _
-                        newFuncDeclar = Replace _
-                            (newFuncDeclar, arg, " const " . arg)
-                newFuncDeclar = ReReplace _
-                    (newFuncDeclar, "\bdim\s+", "")  ; delete “dim”
-                Text = _
-                    Replace(Text, funcDeclar, newFuncDeclar)
-    endif CONSTBYDEFAULT and isPlysFile
-    
-    ; Import
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if IMPORTKEYWORD then
-        if IsArray(Text) then _
-            Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-        if isPlysFile then
-            ; comment #import if module including or importing alredy been
-            for dep = 1 to DepTable[0][0]
-                if DepTable[module][dep] <> import then continueloop
-                rel_dirSlash = PathPart(DepTable[module][0], "dir")
-                relrel_dep = DepTable[dep][0]
-                if rel_dirSlash <> "" then relrel_dep = _
-                        Replace(relrel_dep, rel_dirSlash, "")
-                relrel_dep = ReReplace _
-                    (relrel_dep, "[\\\.\^\$\[\(\{\+\#]", "\\$0")
-                Text = ReReplace _
-                    (Text, '(?m)^\#(include|import)\s+[<"]' . _
-                    relrel_dep . '[>"]', ";PLYS $0")
-                foundInPrev = False
-                for prev = 1 to module - 1
-                    if DepTable[prev][dep] then
-                        foundInPrev = True
-                        exitloop
-                if not foundInPrev then        ; uncomment first
-                    Text = ReReplace _
-                        (Text, '(?m)^;PLYS (\#(include|import)\s+[<"]' . _
-                        relrel_dep . '[>"])', "$1", 1)
-        endif isPlysFile
-                
-        ; replace “#include/#import "path\name.ext"”
-        ; with “#include "path\%target_prefix%name.ext.au3"”
-        Text = ReReplace(Text, _
-            '(?m)^\#(include' . (isPlysFile ? "|import" : "") . _
-            ')\s+"(.*\\)?(.*?)"(.*)$', _
-            '#include "$2$3\.au3"$4')
-        
-        Text = SplitStatements(Text)
-        
-        ; replace own names
-        names = DepTable[0][module]
-        if DepTable[0][0] > 1 and IsArray(names) then
-            ; purified filename
-            prefix = PathPart(DepTable[module][0], "dir", "name")
-            prefix = ReReplace(prefix, "[^\w]", "_")
-            ; TODO: загнать имена в шаблон (имя|имя|…) и заменить одним махом
-            for name in names
-                if Left(name, 1) = "$" then        ; is variable
-                    reReplaceInMain(Text, _
-                        "(?im)([^\w""'" . nameDelim . "]|^)\$(" . _
-                            TrimLeft(name, 1) . ")([^\w""'])", _
-                        "$1\$" . prefix . "_$2__" . suffixes[module] . "$3")
-                else        ; is function
-                    prefix = ReReplace(prefix, "^[0-9]", "_$1")
-                    reReplaceInMain(Text, _
-                        "(?im)([^\w""'\$" . nameDelim . "]|^)(" . name . ")([^\w""'])", _
-                        "${1}" . prefix . "_$2__" . suffixes[module] . "$3")
-        
-        ; replace names from ThruTable[0][dep] in module file
-        for directive in directives  ; import (1), include (2), mir_include (1.5)
-            for dep = 1 to DepTable[0][0]
-                if ThruTable[module][dep] <> directive then _
-                    continueloop
-                names = DepTable[0][dep]
-                if IsArray(names) then
-                    ; purified filename
-                    filename = PathPart(DepTable[dep][0], "name")
-                    filename = ReReplace(filename, "[^\w]", "_")
-                    prefix = PathPart(DepTable[dep][0], "dir")
-                    prefix = ReReplace(prefix, "[^\w]", "_")
-                    prefix .= filename
-                    for name in names
-                        if Left(name, 1) = "$" then        ; is variable
-                            name = TrimLeft(name, 1)
-                            varPrefix = "\$"
-                        else
-                            prefix = ReReplace(prefix, "^[0-9]", "_$1")
-                            varPrefix = ""
-                        if ReFind(name, MODULEPUBLICSUFFIX . "$") then
-                            name = TrimRight(name, 1)
-                            isPublic = True
-                        else
-                            isPublic = False
-                        if ThruTable[module][dep] <> import then
-                            reReplaceInMain(Text, _
-                                "(?im)([^\w""']|^)" . varPrefix . name . "([^\w""'])", _
-                                "${1}" . varPrefix . prefix . "_" . name . "__" . suffixes[dep] . "$2")
-                        elseif isPublic then  ; import and isPublic
-                            reReplaceInMain(Text, _
-                                "(?im)([^\w""']|^)" . filename . nameDelim . varPrefix . name . "([^\w""'])", _
-                                "${1}" . varPrefix . prefix . "_" . name . "__" . suffixes[dep] . "$2")
-            next dep
-        next directive
-        
-    endif IMPORTKEYWORD
-    
-    ; Synonyms
-    ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    if synonyms and isPlysFile then
-        if IsString(Text) then Text = SplitStatements(Text)
+                        prefix = ReReplace(prefix, "^[0-9]", "_$1")
+                        varPrefix = ""
+                    if ReFind(name, ModulePublicSuffixRegEx . "$") then
+                        name = TrimRight(name, 1)
+                        isPublic = True
+                    else
+                        isPublic = False
+                    if ThruTable[module][dep] <> ImportDep then
+                        __ReReplaceInMain(text, _
+                            "(?im)([^\w""']|^)" . varPrefix . name _
+                            . "([^\w""'])", _
+                            "${1}" . varPrefix . prefix . "_" . name _
+                            . "__" . Suffixes[dep] . "$2")
+                    elseif isPublic then  ; ImportDep and isPublic
+                        __ReReplaceInMain(text, _
+                            "(?im)([^\w""']|^)" . filename _
+                            . NameDelimRegEx . varPrefix . name _
+                            . "([^\w""'])", "${1}" . varPrefix . prefix _
+                            . "_" . name . "__" . Suffixes[dep] . "$2")
+
+
+;=============================================================================
+func _RenameSynonyms(dim byref text, isMainModule)
+;=============================================================================
+        if IsString(text) then text = __SplitStatements(text)
         ;
-        reReplaceInMain(Text, "(?i)\bEcho\b", "ConsoleWrite")
+        __ReReplaceInMain(text, "(?i)\bEcho\b", "ConsoleWrite")
         ; DllStruct −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)\bStruct\b", "DllStructCreate")
-        reReplaceInMain(Text, "(?i)\bStructGet\b", "DllStructGetData")
-        reReplaceInMain(Text, "(?i)\bStructGetSize\b", "DllStructGetSize")
-        reReplaceInMain(Text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
-        reReplaceInMain(Text, "(?i)\bStructSet\b", "DllStructSetData")
-        reReplaceInMain(Text, "(?i)\bIsStruct\b", "IsDllStruct")
+        __ReReplaceInMain(text, "(?i)\bStruct\b", "DllStructCreate")
+        __ReReplaceInMain(text, "(?i)\bStructGet\b", "DllStructGetData")
+        __ReReplaceInMain(text, "(?i)\bStructGetSize\b", "DllStructGetSize")
+        __ReReplaceInMain(text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
+        __ReReplaceInMain(text, "(?i)\bStructSet\b", "DllStructSetData")
+        __ReReplaceInMain(text, "(?i)\bIsStruct\b", "IsDllStruct")
         ; File −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)\b(" . _
-            "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" . _
-            "GetEncoding|GetLongName|GetShortcut|GetShortName|" . _
-            "GetSize|GetTime|GetVersion|Open|OpenDialog|Read|" . _
-            "ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|" . _
-            "SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|" . _
-            "WriteLine" . _
-            ")\b", "File$1")
-        reReplaceInMain(Text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
-        reReplaceInMain(Text, "(?i)\bFirstFile\b", "FileFindFirstFile")
-        reReplaceInMain(Text, "(?i)\bNextFile\b", "FileFindNextFile")
+        __ReReplaceInMain(text, "(?i)\b(" _
+            . "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|GetEncoding|" _
+            . "GetLongName|GetShortcut|GetShortName|GetSize|GetTime|" _
+            . "GetVersion|Open|OpenDialog|Read|ReadLine|ReadToArray|Recycle|" _
+            . "RecycleEmpty|SaveDialog|SelectFolder|SetAttrib|SetEnd|SetPos|" _
+            . "SetTime|Write|WriteLine" _
+            . ")\b", "File$1")
+        __ReReplaceInMain(text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
+        __ReReplaceInMain(text, "(?i)\bFirstFile\b", "FileFindFirstFile")
+        __ReReplaceInMain(text, "(?i)\bNextFile\b", "FileFindNextFile")
         ; **Close|**Delete|**Exists|**GetPos|Install|**Move
         ; String −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)\b(" . _
-            "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" . _
-            "IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" . _
-            "Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" . _
-            "Upper" . _
-            ")\b", "String$1")
-        reReplaceInMain(Text, "(?i)\bReFind\b", "StringRegExp")
-        reReplaceInMain(Text, "(?i)\bReReplace\b", "StringRegExpReplace")
+        __ReReplaceInMain(text, "(?i)\b(" _
+            . "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|IsLower|" _
+            . "IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|Replace|Right|" _
+            . "Split|StripCR|StripWS|TrimLeft|TrimRight|Upper" _
+            . ")\b", "String$1")
+        __ReReplaceInMain(text, "(?i)\bReFind\b", "StringRegExp")
+        __ReReplaceInMain(text, "(?i)\bReReplace\b", "StringRegExpReplace")
         ; Compare|FromASCIIArray|*IsFloat|*IsInt|**Reverse|ToASCIIArray
         ; Win −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)\b(" . _
-            "Activate|Active|Flash|GetCaretPos|GetClassList|" . _
-            "GetClientSize|GetProcess|GetTitle|Kill|List|" . _
-            "MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" . _
-            "SetTitle|SetTrans|Wait|WaitActive|WaitClose|" . _
-            "WaitNotActive" . _
-            ")\b", "Win$1")
-        ; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move|*SetState
+        __ReReplaceInMain(text, "(?i)\b(" _
+            . "Activate|Active|Flash|GetCaretPos|GetClassList|GetClientSize|" _
+            . "GetProcess|GetTitle|Kill|List|MenuSelectItem|MinimizeAll|" _
+            . "MinimizeAllUndo|SetOnTop|SetTitle|SetTrans|Wait|WaitActive|" _
+            . "WaitClose|WaitNotActive" _
+            . ")\b", "Win$1")
+        ; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move
+        ; |*SetState
         ; Macros −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)(@)(" . _
-            "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" . _
-            "StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" . _
-            "NoCount|EndNotStart|UTF16|UCS2" . _
-            ")\b", "$Str_$2")
-        reReplaceInMain(Text, "(?i)(@Re)(" . _
-            "Array|ArrayFull|ArrayGlobal|ArrayGlobalFull"& _
-            ")\b", "$Str_RegExp$2Match")
-        reReplaceInMain(Text, "(?i)@ReMatch\b", "$STR_REGEXPMATCH")
-        reReplaceInMain(Text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
-        reReplaceInMain(Text, "(?i)@CmdLine\b", "$CmdLine")
-        reReplaceInMain(Text, "@(\W)", "@CRLF$1")
+        __ReReplaceInMain(text, "(?i)(@)(" _
+            . "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" _
+            . "StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" _
+            . "NoCount|EndNotStart|UTF16|UCS2" _
+            . ")\b", "$Str_$2")
+        __ReReplaceInMain(text, "(?i)(@Re)(" _
+            . "Array|ArrayFull|ArrayGlobal|ArrayGlobalFull" _
+            . ")\b", "$Str_RegExp$2Match")
+        __ReReplaceInMain(text, "(?i)@ReMatch\b", "$STR_REGEXPMATCH")
+        __ReReplaceInMain(text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
+        __ReReplaceInMain(text, "(?i)@CmdLine\b", "$CmdLine")
+        __ReReplaceInMain(text, "@(\W)", "@CRLF$1")
         ; _Array −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(?i)\b(" . _
-            "Add|ColDelete|ColInsert|Combinations|Display|Extract|" . _
-            "FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" . _
-            "Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" . _
-            "Unique" . _
-            ")\b", "_Array$1")
-        ; reReplaceInMain(Text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
-        reReplaceInMain(Text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
-        reReplaceInMain(Text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
-        reReplaceInMain(Text, "(?i)\bConcat\b", "_ArrayConcatenate")
+        __ReReplaceInMain(text, "(?i)\b(" _
+            . "Add|ColDelete|ColInsert|Combinations|Display|Extract|FindAll|" _
+            . "Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|Push|Search|" _
+            . "Shuffle|Sort|Swap|ToClip|Transpose|Trim|Unique" _
+            . ")\b", "_Array$1")
+        ; __ReReplaceInMain(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
+        __ReReplaceInMain(text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
+        __ReReplaceInMain(text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
+        __ReReplaceInMain(text, "(?i)\bConcat\b", "_ArrayConcatenate")
         ; **Delete|**Reverse|*ToString
         ; −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-        reReplaceInMain(Text, "(\s)\.(\s)", "$1&$2")
-        reReplaceInMain(Text, "\.=", "&=")
-        if module = 1 then
-            Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-            Text = ReReplace(Text, "(?im)^(?!#au)", _
-                "#include <StringConstants.au3>" . @ . _
-                "#include <Array.au3>" . @, 1); . _
-                ; "#include <Function.au3>" . @, 1)
-    endif synonyms and isPlysFile
-
-    if IsArray(Text) then _
-        Text = _ArrayToString(Text, "", -1, -1, "", 0, 0)
-    Write(targetPath, Text)
-    if run_ then
-        SetAttrib(targetPath, "+H")
-        Add(targetPaths, targetPath)
-    else
-        ConsoleWrite('[Writed] "' . targetPath . '"' . @)
-next module
-Text = ""
-DepTable = 0
-if IMPORTKEYWORD then ThruTable = 0
+        __ReReplaceInMain(text, "(\s)\.(\s)", "$1&$2")
+        __ReReplaceInMain(text, "\.=", "&=")
+        if isMainModule then
+            text = _ArrayToString(text, "", -1, -1, "", 0, 0)
+            text = ReReplace(text, "(?im)^(?!#au)", _
+                "#include <StringConstants.au3>" . @ _
+                . "#include <Array.au3>" . @, 1); _
+                ; . "#include <Function.au3>" . @, 1)
 
 
-if run_ then
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func RunResult()
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
     ; @CmdLine = [0:n, 1:path, 2:args] or [0:n, 1:/ErrorStdOut, 2:path, 3:args]
-    const firstArgIndex = errorStdOut? 3 : 2
+    const firstArgIndex = ErrorStdOut? 3 : 2
     const argc = @CmdLine[0] - firstArgIndex + 1
+    dim args
     if argc > 0 then
         dim argv[argc]
         for i = firstArgIndex to @CmdLine[0]
@@ -696,19 +579,22 @@ if run_ then
         args = _ArrayToString(argv, " ")
     else
         args = ""
-    const pid = Run('"' . @AutoItExe . _
-        (errorStdOut? '" /ErrorStdOut "' : '" "') . INPUTFILEPATH . '.au3" ' . _
-        args, "", default, STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
-    if stdioExchange then
-        const proc = _WinAPI_OpenProcess((_WinAPI_GetVersion() >= 6.0)? _
-            PROCESS_QUERY_LIMITED_INFORMATION : PROCESS_QUERY_INFORMATION, 0, pid)
+    const pid = Run('"' . @AutoItExe _
+        . (ErrorStdOut? '" /ErrorStdOut "' : '" "') . InputFilePath _
+        . '.au3" ' . args, "", default, _
+        STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
+    if StdioExchange then
+        const proc = _WinAPI_OpenProcess( _
+            (_WinAPI_GetVersion() >= 6.0)? _
+            PROCESS_QUERY_LIMITED_INFORMATION _
+            : PROCESS_QUERY_INFORMATION, 0, pid)
         dim timer = TimerInit()
         dim stdoutData, lastData, lastLoop = False
         Opt("TrayIconHide", 1)
         while True
             StdinWrite(pid, ConsoleRead())
             ConsoleWriteError(StderrRead(pid))
-            if errorStdOut then
+            if ErrorStdOut then
                 stdoutData = StdoutRead(pid)
                 if stdoutData <> "" then lastData = stdoutData
                 ConsoleWrite(stdoutData)
@@ -721,12 +607,13 @@ if run_ then
             GUIGetMsg()  ; prevents hogging of the CPU
         StdioClose(pid)
         if _WinAPI_GetExitCodeProcess(proc) = 0 then
-            for targetPath in targetPaths
-                FileDelete(targetPath)
-        elseif errorStdOut then
+            for path in PathsToDeleteOnExit
+                FileDelete(path)
+        elseif ErrorStdOut then
             lastData = ReFind(lastData, _
-                '[^"]*("?)([a-zA-Z]:\\.+?\\.+?\.au[p3])(\.au3)("? \()(\d+)' . _
-                '(\) : ==> )(.+?)\.: ?\R(.+\R)([^^]*)(\^ ERROR\R)$', @ReArray)
+                '[^"]*("?)([a-zA-Z]:\\.+?\\.+?\.au[p3])(\.au3)("? \()(\d+)' _
+                . '(\) : ==> )(.+?)\.: ?\R(.+\R)([^^]*)(\^ ERROR\R)$', _
+                @ReArray)
             local line = ReadLine(lastData[1] . lastData[2], lastData[4])
             lastData[2] = ""
             lastData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
@@ -735,63 +622,34 @@ if run_ then
         _WinAPI_CloseHandle(proc)
 
 
-;=============================================================================
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
 func GetDeps(dim byref DepTable, rel_path)
 ; Search all #include and #import paths in rel_path file, add module numbers
 ; into DepTable and recursively process this dependencies.
-; rel_* - relative to @ScriptDir, relrel_* - relative to rel_path
-;=============================================================================
-    static ScriptDir = PathPart(INPUTFILEPATH, "drive", "dir")
-    dim text = Read(ScriptDir . "\" . rel_path)
-    const relrel_includes = ReFind _
-        (text, '(?m)^\#include\s+"(.+?)"', @ReArrayGlobal)
-    const importEnabled = _
-        IMPORTKEYWORD and PathPart(rel_path, "ext") = ".aup"
-    if importEnabled then
-        const relrel_imports = ReFind _
-            (text, '(?m)^\#import\s+"(.+?)"', @ReArrayGlobal)
-    dim names = ReFind(text, _
-        "(?im)^\s*func\s+([A-Za-z_]\w*" . MODULEPUBLICSUFFIX . "?)", _
-        @ReArrayGlobal)
-    if not IsArray(names) then _
-        dim names[0]
-    if CONSTBYDEFAULT then
-        dim varsDeclars = ReFind _
-            (text, "(?im)^(?:\s*global\s+)?(?:dim|const|enum)\s+(.*)", _
-            @ReArrayGlobal)
-    else
-        dim varsDeclars = ReFind _
-            (text, "(?im)^\s*global\s+(.*)", @ReArrayGlobal)
-    text = ""
-    if IsArray(varsDeclars) then
-        ; FIXME: "const $bar = foo(1, 2)" → ["$bar = foo(1", " 2)"]
-        dim newNames
-        for varsDeclar in varsDeclars
-            for varDeclar in Split(varsDeclar, ",", @NoCount)
-                ;newNames = ReFind _
-                ;    (varDeclar, "(\$\w*)", @ReArrayGlobal)
-                ;if IsArray(newNames) then Add(names, newNames[0])
-                newNames = ReFind(varDeclar, _
-                    "([\$A-Za-z_]\w*" . MODULEPUBLICSUFFIX . "?)", _
-                    @ReArrayGlobal)
-                if IsArray(newNames) then
-                    Add(names, ReReplace(newNames[0], "^\w", "\$$0", 1))
-    varsDeclars = ""
-    
+; rel_* - relative to InputFileDir, relrel_* - relative to rel_path
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    dim text = Read(InputFileDir . "\" . rel_path)
+
     ; append and init new module cells
     const module = DepTable[0][0] + 1
     redim DepTable[module + 1][module + 1]
     DepTable[0][0] = module
     DepTable[module][0] = rel_path
-    DepTable[0][module] = Unique(names, 0, 0, 0, ARRAYUNIQUE_NOCOUNT)
-    names = ""
+    DepTable[0][module] = _FindNames(text)
     
-    enum include = 2, import = 1
-    const directives = [include, import]
+    const relrel_includes = _
+        ReFind(text, '(?m)^\#include\s+"(.+?)"', @ReArrayGlobal)
+    const importEnabled = _
+        ImportKeyword and PathPart(rel_path, "ext") = ".aup"
+    if importEnabled then
+        const relrel_imports = _
+            ReFind(text, '(?m)^\#import\s+"(.+?)"', @ReArrayGlobal)
+    text = ""
+    const depTypes = [IncludeDep, ImportDep]
     dim relrel_deps, rel_dep, dep
     const rel_dirSlash = PathPart(rel_path, "dir")  ; current_file\directory\
-    for directive in directives
-        if directive = include then
+    for depType in depTypes
+        if depType = IncludeDep then
             relrel_deps = relrel_includes
         elseif importEnabled then
             relrel_deps = relrel_imports
@@ -802,16 +660,43 @@ func GetDeps(dim byref DepTable, rel_path)
         for relrel_dep in relrel_deps
             rel_dep = rel_dirSlash . relrel_dep
             dep = Search(DepTable, rel_dep, 1, default, _
-                default, default, default, 0)
-                ; from 1 element in col 0
-            if dep = -1 then        ; new path
+                default, default, default, 0)  ; from 1 element in col 0
+            if dep = -1 then  ; new path
                 GetDeps(DepTable, rel_dep)
                 dep = Search(DepTable, rel_dep, 1, default, _
-                    default, default, default, 0)
-                    ; from 1 element in col 0
-            DepTable[module][dep] = directive
+                    default, default, default, 0)  ; from 1 element in col 0
+            DepTable[module][dep] = depType
         
-    next directive
+    next depType
+
+
+func _FindNames(byref text)
+    dim names = ReFind(text, _
+        "(?im)^\s*func\s+([A-Za-z_]\w*" . ModulePublicSuffixRegEx . "?)", _
+        @ReArrayGlobal)
+    if not IsArray(names) then _
+        dim names[0]
+    dim varsDeclars
+    if ConstByDefault then
+        varsDeclars = ReFind(text, _
+            "(?im)^(?:\s*global\s+)?(?:dim|const|enum)\s+(.*)", _
+                @ReArrayGlobal)
+    else
+        varsDeclars = ReFind(text, "(?im)^\s*global\s+(.*)", @ReArrayGlobal)
+    if IsArray(varsDeclars) then
+        ; FIXME: "const $bar = foo(1, 2)" → ["$bar = foo(1", " 2)"]
+        dim newNames
+        for varsDeclar in varsDeclars
+            for varDeclar in Split(varsDeclar, ",", @NoCount)
+                ;newNames = ReFind _
+                ;    (varDeclar, "(\$\w*)", @ReArrayGlobal)
+                ;if IsArray(newNames) then Add(names, newNames[0])
+                newNames = ReFind(varDeclar, _
+                    "([\$A-Za-z_]\w*" . ModulePublicSuffixRegEx . "?)", _
+                    @ReArrayGlobal)
+                if IsArray(newNames) then
+                    Add(names, ReReplace(newNames[0], "^\w", "\$$0", 1))
+    return Unique(names, 0, 0, 0, ARRAYUNIQUE_NOCOUNT)
 
 
 func PathPart(path, dim start="path", dim finish="")
@@ -826,13 +711,13 @@ func PathPart(path, dim start="path", dim finish="")
     
     ; from _PathSplit (File.au3)
     dim split_ = ReFind(path, _
-        "^\h*((?:\\\\\?\\)*(\\\\[^\?\/\\]+|[A-Za-z]:)?(.*[\/\\]\h*)?" . _
-        "((?:[^\.\/\\]|(?(?=\.[^\/\\]*\.)\.))*)?([^\/\\]*))$", @ReArray)
+        "^\h*((?:\\\\\?\\)*(\\\\[^\?\/\\]+|[A-Za-z]:)?(.*[\/\\]\h*)?" _
+        . "((?:[^\.\/\\]|(?(?=\.[^\/\\]*\.)\.))*)?([^\/\\]*))$", @ReArray)
     if @error then ; This error should never happen.
         redim split_[5]
         split_[0] = path
     split_[2] = ReReplace(split_[2], "\h*[\/\\]+\h*", _
-        (Left(split_[2], 1) == "/") ? "\/" : "\\")
+        (Left(split_[2], 1) == "/")? "\/" : "\\")
     
     dim result = ""
     for i = start to finish
@@ -841,25 +726,24 @@ func PathPart(path, dim start="path", dim finish="")
 
 
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-func SplitStatements(byref text)
+func __SplitStatements(byref text)
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
     dim split_[1][2], i = 0
     dim result
-    dim patterns[5], type = MAIN_TYPE
-    patterns[COMMENT_TYPE] = _
+    dim patterns[5], type = MainType
+    patterns[CommentType] = _
         "(?is)(;|\#cs.*?\#ce|\#comments-start.*?\#comments-end).*?(\R|\z)"
-    patterns[DIRECTIVE_TYPE] = "\#.*"
-    patterns[STRING_TYPE] = "((""|').*?\2)"
-    patterns[LAMBDA_TYPE] = "(\{.*?:.*?\})"
-    patterns[MAIN_TYPE] = _
-        "(?s).*?(?=[;""'\#" . (LAMBDAFUNCTIONS ? "\{" : "") . "]|\z)"
+    patterns[DirectiveType] = "\#.*"
+    patterns[StringType] = "((""|').*?\2)"
+    patterns[LambdaType] = "(\{.*?:.*?\})"
+    patterns[MainType] = _
+        "(?s).*?(?=[;""'\#" . (LambdaFunctions? "\{" : "") . "]|\z)"
     dim offset = 1
     const len_ = Len(text)
     while True
         ;redim split_[i + 1][2]  ; optimized below
         if i > UBound(split_) - 1 then redim split_[UBound(split_)*2][2]
-        result = ReFind _
-            (text, patterns[type], @ReArrayFull, offset)[0]
+        result = ReFind(text, patterns[type], @ReArrayFull, offset)[0]
         if @error then exitloop
         split_[i][0] = result
         split_[i][1] = type
@@ -867,29 +751,28 @@ func SplitStatements(byref text)
         if offset > len_ then exitloop
         switch Mid(text, offset, 1)
             case ";"
-                type = COMMENT_TYPE
+                type = CommentType
             case "#"
-                type = ( _
-                    ReFind(text, "(?i)(\#cs|\#comments-start)", @ReMatch, offset) _
-                        ) ? COMMENT_TYPE : DIRECTIVE_TYPE
-                type = (Mid(text, offset, 3) = "#cs" or _
-                    Mid(text, offset, 15) = "#comments-start") ? _
-                    COMMENT_TYPE : DIRECTIVE_TYPE
+                type = (ReFind(text, "(?i)(\#cs|\#comments-start)", _
+                    @ReMatch, offset))? CommentType : DirectiveType
+                type = (Mid(text, offset, 3) = "#cs" _
+                    or Mid(text, offset, 15) = "#comments-start")? _
+                    CommentType : DirectiveType
             case """", "'"
-                type = STRING_TYPE
+                type = StringType
             case "{"
-                type = LAMBDA_TYPE
+                type = LambdaType
             case else
-                type = MAIN_TYPE
+                type = MainType
         i += 1
     wend
     return split_
 
 
-func reFindInMain(byref split_, pattern, flag=0)
+func __ReFindInMain(byref split_, pattern, flag=0)
     dim match, result[0]
     for i = 0 to UBound(split_) - 1
-        if split_[i][1] <> MAIN_TYPE then continueloop
+        if split_[i][1] <> MainType then continueloop
         switch flag
             case @ReMatch
                 if ReFind(split_[i][0], pattern, flag) then return 1
@@ -901,18 +784,17 @@ func reFindInMain(byref split_, pattern, flag=0)
                         return SetError(@error, @extended)
                     case 0
                         Concat(result, match)
-    next i
     switch flag
         case @ReMatch
             return 0
         case @ReArrayGlobal
-            return (UBound(result) = 0) ? SetError(1) : result
+            return (UBound(result) = 0)? SetError(1) : result
 
 
-func reReplaceInMain(dim byref split_, pattern, replace_, count=0)
+func __ReReplaceInMain(dim byref split_, pattern, replace_, count=0)
     dim performed = 0, remainder = count
     for i = 0 to UBound(split_) - 1
-        if split_[i][1] <> MAIN_TYPE then continueloop
+        if split_[i][1] <> MainType then continueloop
         split_[i][0] = ReReplace(split_[i][0], pattern, replace_, remainder)
         if @error then return SetError(@error, @extended)
         performed += @extended
@@ -922,10 +804,11 @@ func reReplaceInMain(dim byref split_, pattern, replace_, count=0)
     return performed
 
 
-func ReplaceInMain(dim byref split_, subString, replaceString)
+; FIXME: not used!
+func replaceinmain(dim byref split_, subString, replaceString)
     dim performed = 0
     for i = 0 to UBound(split_) - 1
-        if split_[i][1] <> MAIN_TYPE then continueloop
+        if split_[i][1] <> MainType then continueloop
         split_[i][0] = Replace(split_[i][0], subString, replaceString)
         if @error then return SetError(@error, 0, "")
         performed += @extended

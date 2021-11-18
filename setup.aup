@@ -1,0 +1,117 @@
+#include <MsgBoxConstants.au3>
+#include <TrayConstants.au3>
+#include <FileConstants.au3>
+Opt("MustDeclareVars", 1)
+
+const Version = "0.4.0"
+
+const SilentMode = False
+const Au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
+const TemplateFilePath = @WindowsDir . "\ShellNew\Template.aup"
+ 
+
+if FileExists(Au3exeDir . "Plys\plys.au3") then
+    Uninstall()
+else
+    Install()
+
+
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+func Install()
+;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    dim answer
+    if not SilentMode then
+        answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
+            "Install Plys for AutoIt?", _
+            "Plys features for AutoIt will install to this computer.")
+        if answer <> IDOK then exit
+    TraySetIcon("stop")
+    TraySetState(TRAY_ICONSTATE_FLASH)
+    
+    ; RegWrite("HKLM\SOFTWARE\AutoIt v3", "PlysVersion", "REG_SZ", "1.0")
+    DirCreate(Au3exeDir . "Plys")
+
+    ; copy translator and this file
+    Copy("plys.au3", Au3exeDir . "Plys\", FC_OVERWRITE)
+    Copy(@ScriptFullPath, Au3exeDir . "Plys\uninstall.au3", FC_OVERWRITE)
+    
+    ; copy template file
+    dim templFileData = Read(@WindowsDir . "\ShellNew\Template.au3")
+    templFileData = Replace(templFileData, "AutoIt", "AutoIt Plys")
+    templFileData = ReReplace(templFileData, _
+        "(AutoIt Plys Version:).*", "$1 " . Version)
+    templFileData = ReReplace(templFileData, _
+        "(Author:\s+)(myName)", "$1     $2")
+    FileDelete(TemplateFilePath)
+    Write(TemplateFilePath, templFileData)
+
+    ; copy icon, help and examples
+    Copy("aupscript.ico", Au3exeDir . "Plys\aupscript.ico", FC_OVERWRITE)
+    Copy("Plys.chm", Au3exeDir . "Plys\Plys.chm", FC_OVERWRITE)
+    DirCopy("Helpfile Examples", Au3exeDir . "Plys\Helpfile Examples", _
+        FC_OVERWRITE)
+    
+    RegWrite("HKCR\.aup", "", "REG_SZ", "AutoItPlysScript")
+    ; appoint file type class
+        RegWrite("HKCR\.aup", "PerceivedType", "REG_SZ", "text")
+    ; appoint to Windows search content in as plain text
+        RegWrite("HKCR\.aup\PersistentHandler", "", "REG_SZ", _
+            "{5e941d80-bf96-11cd-b579-08002b30bfeb}")
+    RegWrite("HKCR\.aup\ShellNew", "FileName", "REG_SZ", "Template.aup")
+    
+    RegWrite("HKCR\AutoItPlysScript", "", "REG_SZ", "AutoIt Plys Script")
+    RegWrite("HKCR\AutoItPlysScript\DefaultIcon", "", "REG_SZ", _
+        Au3exeDir . "Plys\aupscript.ico")
+    RegWrite("HKCR\AutoItPlysScript\Shell", "", "REG_SZ", "Run")
+    ; TODO: Compile–CompileX86
+    RegWrite("HKCR\AutoItPlysScript\Shell\Edit", "", "REG_SZ", "Edit Script")
+        const editCmd = RegRead("HKCR\AutoIt3Script\Shell\Edit\Command", "")
+        RegWrite("HKCR\AutoItPlysScript\Shell\Edit\Command", "", _
+            "REG_SZ", editCmd)
+    RegWrite("HKCR\AutoItPlysScript\Shell\Open", "", "REG_SZ", "Open Script")
+        const openCmd = RegRead("HKCR\AutoIt3Script\Shell\Open\Command", "")
+        RegWrite("HKCR\AutoItPlysScript\Shell\Open\Command", "", _
+            "REG_SZ", openCmd)
+    RegWrite("HKCR\AutoItPlysScript\Shell\Run", "", "REG_SZ", "Run Script")
+        const runCmd = RegRead("HKCR\AutoIt3Script\Shell\Run\Command", "")
+        const arg0 = ReReplace(runCmd, ' ".*', "")
+        const arg1 = Replace(arg0, "AutoIt3.exe", "Plys\plys.au3")
+        RegWrite("HKCR\AutoItPlysScript\Shell\Run\Command", "", "REG_SZ", _
+            arg0 . " " . arg1 . ' "%1" %*')
+    ; TODO: RunX64, RunX86
+    RegWrite("HKCR\AutoItPlysScript\Shell\Translate", "", "REG_SZ", _
+            "Translate to AutoIt Script")
+        RegWrite("HKCR\AutoItPlysScript\Shell\Translate\Command", "", _
+            "REG_SZ", arg0 . " " . arg1 . ' /Translate "%1"')
+    ; HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion
+    ; \Uninstall\AutoItv3
+    
+    TraySetState(TRAY_ICONSTATE_STOPFLASH)
+    TraySetIcon()
+    if not SilentMode then _
+        MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
+            "Plys for AutoIt is installed.")
+
+
+func Uninstall()
+    dim answer
+    if not SilentMode then
+        answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
+            "Uninstall Plys for AutoIt?", _
+            "Plys already installed. " _
+            . "Uninstalling Plys will delete existing data of plys.au3 file.")
+        if answer <> IDOK then exit
+    TraySetIcon("stop")
+    TraySetState(TRAY_ICONSTATE_FLASH)
+    FileDelete(TemplateFilePath)
+    while not DirRemove(Au3exeDir . "Plys", DIR_REMOVE)
+        answer = MsgBox(MB_RETRYCANCEL + MB_ICONERROR, "Failure", _
+            "Unable to delete Plys folder.")
+        if answer = IDCANCEL then return
+    RegDelete("HKCR\.aup")
+    RegDelete("HKCR\AutoItPlysScript")
+    TraySetState(TRAY_ICONSTATE_STOPFLASH)
+    TraySetIcon()
+    if not SilentMode then _
+        MsgBox(MB_OK + MB_DEFBUTTON2, "Success", _
+            "Plys for AutoIt is uninstalled.")

@@ -1,7 +1,6 @@
 *.aup.au3
 *.chm
 Helpfile Examples
-help_translator/*.psd
 help_translator/origin
 help_translator/project
 release

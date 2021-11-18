@@ -82,6 +82,8 @@ for i = 1 to 5
 
 </sub></td></tr>
 </table>
+<br>
+<img alt="Plys logo" src="/help_translator/autoit_11_210x72.jpg">
 </div>
 
 # Plys – AutoIt language superset
