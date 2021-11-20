@@ -211,7 +211,7 @@ func _ProcessLambdas(dim byref text, module)
 func _CloseBlocks(dim byref text)
 ;=============================================================================
     if IsArray(text) then text = _ArrayToString(text, "", -1, -1, "", 0, 0)
-    text = ReReplace(text, "(^|\G)\t", TabInSpaces)
+    text = ReReplace(text, "(?m:^|\G)\t", TabInSpaces)
     text = Split(text . @ . "end.", @, @EntireSplit + @NoCount)
 
     dim i = -1, j  ; text line indexes
@@ -309,11 +309,11 @@ func _AddVarPrefixes(dim byref text, dim names)
     ; FIXME: call function, stored in variable: $foo($bar, $buz)
     __ReReplaceInMain(text, "(?i)" _
         . "(?(?=" _  ; if look ahead one of this
-            . "\b(byref|const|continuecase|continueloop|default|dim|do|" _
-            . "enum|exit|exitloop|false|for|to|step|next|for|in|func|return|" _
-            . "endfunc|global|if|then|elseif|else|endif|local|null|redim|" _
-            . "select|case|endselect|static|switch|endswitch|true|volatile|" _
-            . "with|endwith|while|wend|and|or|not|_" . names . ")\b" _
+            . "\b(_|and|byref|case|const|continuecase|continueloop|default|" _
+            . "dim|do|else|elseif|endfunc|endif|endselect|endswitch|endwith|" _
+            . "enum|exit|exitloop|false|for|func|global|if|in|local|next|" _
+            . "not|null|or|redim|return|select|static|step|switch|then|to|" _
+            . "true|until|volatile|wend|while|with" . names . ")\b" _
         . ")" _  ; then replace
             . " " _
         . "|" _  ; else it’s variable: replace
@@ -448,7 +448,7 @@ func __ReplaceNotOwnNames(dim byref text, module)
 ; replace names from ThruTable[0][dep] in module file
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
     const depTypes = [ImportDep, IncludeDep, MirIncludeDep]
-    dim names = DepTable[0][module]
+    dim names
     dim filename, prefix, varPrefix, isPublic
     for depType in depTypes
         for dep = 1 to DepTable[0][0]
@@ -804,8 +804,8 @@ func __ReReplaceInMain(dim byref split_, pattern, replace_, count=0)
     return performed
 
 
-; FIXME: not used!
-func replaceinmain(dim byref split_, subString, replaceString)
+; ATTENTION: not used
+func __ReplaceInMain(dim byref split_, subString, replaceString)
     dim performed = 0
     for i = 0 to UBound(split_) - 1
         if split_[i][1] <> MainType then continueloop
