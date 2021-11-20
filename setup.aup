@@ -77,10 +77,14 @@ func Install()
         const arg0 = ReReplace(runCmd, ' ".*', "")
         const arg1 = Replace(arg0, "AutoIt3.exe", "Plys\plys.au3")
         RegWrite("HKCR\AutoItPlysScript\Shell\Run\Command", "", "REG_SZ", _
-            arg0 . " " . arg1 . ' "%1" %*')
+            arg0 . " " . arg1 . ' /Rapid "%1" %*')
+    RegWrite("HKCR\AutoItPlysScript\Shell\Retranslate and Run", "", "REG_SZ", _
+            "Retranslate and Run")
+        RegWrite("HKCR\AutoItPlysScript\Shell\Retranslate and Run\Command", _
+            "", "REG_SZ", arg0 . " " . arg1 . ' "%1" %*')
     ; TODO: RunX64, RunX86
     RegWrite("HKCR\AutoItPlysScript\Shell\Translate", "", "REG_SZ", _
-            "Translate to AutoIt Script")
+            "Translate to AutoIt")
         RegWrite("HKCR\AutoItPlysScript\Shell\Translate\Command", "", _
             "REG_SZ", arg0 . " " . arg1 . ' /Translate "%1"')
     ; HKLM\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion

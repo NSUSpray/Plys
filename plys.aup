@@ -10,6 +10,9 @@ enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
 ; Translation settings
 const LambdaNameLen = 16
+const ABC = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", _
+    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", _
+    "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 const TabInSpaces = "    "
 const ModulePublicSuffixRegEx = "\*"
 const NewSuffixLen = 2
@@ -24,15 +27,12 @@ dim CloseBlockByIndent = True
 dim ImportKeyword = True
 dim Synonyms = True
 
-; Significant values
-const RunMode = not (@CmdLine[1] == "/Translate")
-const ErrorStdOut = @CmdLine[1] == "/ErrorStdOut"
-const InputFilePath = _
-    (not RunMode or ErrorStdOut)? @CmdLine[2] : @CmdLine[1]
-const InputFileDir = PathPart(InputFilePath, "drive", "dir")
-const ABC = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", _
-    "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "0", _
-    "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+; Translator options
+dim RunMode = True
+dim ErrorStdOut = False
+dim RapidMode = False
+dim InputFilePath
+dim InputFileDir
 
 ; Table of dependencies
 ;    Array size: DepTable[n+1][n+1]
@@ -47,7 +47,6 @@ dim DepTable[1][1] = [[0]]
 ; (based on DepTable)
 dim ThruTable
 
-dim Suffixes
 dim PathsToDeleteOnExit[0]
 
 
@@ -55,19 +54,66 @@ Main()
 
 
 func Main*()
+    const scriptArgs = ProcessCmdLine()
+    GetProjectSettings()
+
     TraySetIcon("stop")
     TraySetState(TRAY_ICONSTATE_FLASH)
-    GetProjectSettings()
+
     const rel_path = PathPart(InputFilePath, "name", "ext")
     GetDeps(DepTable, rel_path)
-    if not RunMode then ConsoleWrite("[Dependencies are get]" . @)
-    if ImportKeyword then
-        MakeThruTable()
-        Suffixes = MakeRandomStrings(ABC, DepTable[0][0], NewSuffixLen)
+    if not RunMode then Echo("[Dependencies are get]" . @)
+
+    if ImportKeyword then MakeThruTable()
+
     ProcessFiles()
+
     DepTable = 0
     if ImportKeyword then ThruTable = 0
-    if RunMode then RunResult()
+
+    if RunMode then
+        const pid = Run('"' . @AutoItExe _
+            . (ErrorStdOut? '" /ErrorStdOut "' : '" "') . InputFilePath _
+            . '.au3" ' . scriptArgs, "", default, _
+            STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
+        if StdioExchange then
+            Opt("TrayIconHide", 1)
+            ProcessStdio(pid)
+
+
+func ProcessCmdLine()
+; @CmdLine = [0:n, 1:path, 2:args] or [0:n, 1:/ErrorStdOut, 2:path, 3:args]
+    const pathIndex = _GetPathIndex()
+    if pathIndex = 0 then
+        InputFilePath = OpenDialog("Run Script:", @MyDocumentsDir, _
+            "Plys script files (*.aup)|All files (*.*)")
+        ; TODO: AutoIt script files (*.au3;*.a3x)
+        if @error then exit
+    else
+        InputFilePath = @CmdLine[pathIndex]
+
+    InputFileDir = PathPart(InputFilePath, "drive", "dir")
+
+    const argc = @CmdLine[0] - pathIndex
+    if argc = 0 then return ""
+    dim argv[argc]
+    for i = pathIndex + 1 to @CmdLine[0]
+        argv[i - 2] = '"' . @CmdLine[i] . '"'
+    return _ArrayToString(argv, " ")
+
+
+func _GetPathIndex()
+    if @CmdLine[0] = 0 then return 0
+    for i = 1 to @CmdLine[0]
+        if Left(@CmdLine[i], 1) <> "/" then exitloop
+        switch @CmdLine[i]
+            case "/Translate"
+                RunMode = False
+            case "/ErrorStdOut"
+                ErrorStdOut = True
+            case "/Rapid"
+                RapidMode = True
+    return i
 
 
 func GetProjectSettings()
@@ -127,7 +173,8 @@ func MakeThruTable()
     until not changed
 
 
-func MakeRandomStrings(abc, num, stringsLen)
+; ATTENTION: not used
+func RandomStrings(abc, num, stringsLen)
     dim strings[num + 1]
     dim str
     strings[0] = num
@@ -150,12 +197,15 @@ func ProcessFiles()
     for module = 1 to DepTable[0][0]
         sourcePath = InputFileDir . "\" . DepTable[module][0]
         targetPath = PathPart(sourcePath, "drive", "ext") . ".au3"
-        if FileExists(targetPath) then
-            if GetTime(targetPath, 0, 1) > GetTime(sourcePath, 0, 1) _
-                    and False then  ; because name suffixes will be changed
-                    ; TODO: generate stable suffixes – with /Fast option
-                if RunMode then Add(PathsToDeleteOnExit, targetPath)
-                continueloop  ; file not changed – skip this
+        if RapidMode then
+            if FileExists(targetPath) _
+                    and GetTime(sourcePath, 0, 1) _
+                        < GetTime(targetPath, 0, 1) then
+                continueloop
+                ; FIXME: name suffixes will be changed
+                ; TODO: generate stable suffixes – with /Rapid option
+        elseif RunMode then
+            Add(PathsToDeleteOnExit, targetPath)
         isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
         text = Read(sourcePath)
 
@@ -174,9 +224,8 @@ func ProcessFiles()
         Write(targetPath, text)
         if RunMode then
             SetAttrib(targetPath, "+H")
-            Add(PathsToDeleteOnExit, targetPath)
         else
-            ConsoleWrite('[Writed] "' . targetPath . '"' . @)
+            Echo('[Writed] "' . targetPath . '"' . @)
     next module
 
 
@@ -214,7 +263,7 @@ func _CloseBlocks(dim byref text)
     text = ReReplace(text, "(?m:^|\G)\t", TabInSpaces)
     text = Split(text . @ . "end.", @, @EntireSplit + @NoCount)
 
-    dim i = -1, j  ; text line indexes
+    dim i = -1, j
     dim comments = False
     dim indentSize, prevIndentSize = 0
     dim statement, sttmnt
@@ -396,7 +445,7 @@ func _ProcessImports(dim byref text, module, isPlysFile)
         '#include "$2$3\.au3"$4')
     
     text = __SplitStatements(text)
-    __ReplaceOwnNames(text, module)
+    if DepTable[0][0] > 1 then __ReplaceOwnNames(text, module)
     __ReplaceNotOwnNames(text, module)
 
 
@@ -424,23 +473,23 @@ func __PreventReimporting(dim byref text, module)
 
 func __ReplaceOwnNames(dim byref text, module)
     const names = DepTable[0][module]
-    if DepTable[0][0] > 1 and IsArray(names) then
-        ; purified filename
-        dim prefix = PathPart(DepTable[module][0], "dir", "name")
-        prefix = ReReplace(prefix, "[^\w]", "_")
-        ; TODO: загнать имена в шаблон (имя|имя|…) и заменить одним махом
-        for name in names
-            if Left(name, 1) = "$" then  ; is variable
-                __ReReplaceInMain(text, _
-                    "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
-                        . TrimLeft(name, 1) . ")([^\w""'])", _
-                    "$1\$" . prefix . "_$2__" . Suffixes[module] . "$3")
-            else        ; is function
-                prefix = ReReplace(prefix, "^[0-9]", "_$1")
-                __ReReplaceInMain(text, _
-                    "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
-                    . ")([^\w""'])", _
-                    "${1}" . prefix . "_$2__" . Suffixes[module] . "$3")
+    if not IsArray(names) then return
+    ; purified filename
+    dim prefix = PathPart(DepTable[module][0], "dir", "name")
+    prefix = ReReplace(prefix, "\W", "_")
+    ; TODO: загнать имена в шаблон (имя|имя|…) и заменить одним махом
+    for name in names
+        if Left(name, 1) = "$" then  ; is variable
+            __ReReplaceInMain(text, _
+                "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
+                    . TrimLeft(name, 1) . ")([^\w""'])", _
+                "$1\$" . prefix . "_$2$3")
+        else  ; is function
+            prefix = ReReplace(prefix, "^[0-9]", "_$1")
+            __ReReplaceInMain(text, _
+                "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
+                . ")([^\w""'])", _
+                "${1}" . prefix . "_$2$3")
 
 
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
@@ -478,13 +527,13 @@ func __ReplaceNotOwnNames(dim byref text, module)
                             "(?im)([^\w""']|^)" . varPrefix . name _
                             . "([^\w""'])", _
                             "${1}" . varPrefix . prefix . "_" . name _
-                            . "__" . Suffixes[dep] . "$2")
+                            . "$2")
                     elseif isPublic then  ; ImportDep and isPublic
                         __ReReplaceInMain(text, _
                             "(?im)([^\w""']|^)" . filename _
                             . NameDelimRegEx . varPrefix . name _
                             . "([^\w""'])", "${1}" . varPrefix . prefix _
-                            . "_" . name . "__" . Suffixes[dep] . "$2")
+                            . "_" . name . "$2")
 
 
 ;=============================================================================
@@ -565,61 +614,53 @@ func _RenameSynonyms(dim byref text, isMainModule)
                 ; . "#include <Function.au3>" . @, 1)
 
 
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-func RunResult()
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    ; @CmdLine = [0:n, 1:path, 2:args] or [0:n, 1:/ErrorStdOut, 2:path, 3:args]
-    const firstArgIndex = ErrorStdOut? 3 : 2
-    const argc = @CmdLine[0] - firstArgIndex + 1
-    dim args
-    if argc > 0 then
-        dim argv[argc]
-        for i = firstArgIndex to @CmdLine[0]
-            argv[i - 2] = '"' . @CmdLine[i] . '"'
-        args = _ArrayToString(argv, " ")
-    else
-        args = ""
-    const pid = Run('"' . @AutoItExe _
-        . (ErrorStdOut? '" /ErrorStdOut "' : '" "') . InputFilePath _
-        . '.au3" ' . args, "", default, _
-        STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
-    if StdioExchange then
-        const proc = _WinAPI_OpenProcess( _
-            (_WinAPI_GetVersion() >= 6.0)? _
+func ProcessStdio(pid)
+    const proc = _WinAPI_OpenProcess( _
+        (_WinAPI_GetVersion() >= 6.0)? _
             PROCESS_QUERY_LIMITED_INFORMATION _
             : PROCESS_QUERY_INFORMATION, 0, pid)
-        dim timer = TimerInit()
-        dim stdoutData, lastData, lastLoop = False
-        Opt("TrayIconHide", 1)
-        while True
-            StdinWrite(pid, ConsoleRead())
-            ConsoleWriteError(StderrRead(pid))
-            if ErrorStdOut then
-                stdoutData = StdoutRead(pid)
-                if stdoutData <> "" then lastData = stdoutData
-                ConsoleWrite(stdoutData)
-            else
-                ConsoleWrite(StdoutRead(pid))
-            if lastLoop then exitloop
-            if TimerDiff(timer) > 300 then
-                if not ProcessExists(pid) then lastLoop = True
-                timer = TimerInit()
-            GUIGetMsg()  ; prevents hogging of the CPU
-        StdioClose(pid)
-        if _WinAPI_GetExitCodeProcess(proc) = 0 then
+    const lastData = _WaitClose(pid)
+    StdioClose(pid)
+    if _WinAPI_GetExitCodeProcess(proc) = 0 then
+        if not RapidMode then
             for path in PathsToDeleteOnExit
                 FileDelete(path)
-        elseif ErrorStdOut then
-            lastData = ReFind(lastData, _
-                '[^"]*("?)([a-zA-Z]:\\.+?\\.+?\.au[p3])(\.au3)("? \()(\d+)' _
-                . '(\) : ==> )(.+?)\.: ?\R(.+\R)([^^]*)(\^ ERROR\R)$', _
-                @ReArray)
-            local line = ReadLine(lastData[1] . lastData[2], lastData[4])
-            lastData[2] = ""
-            lastData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
-            lastData[6] .= ": " . TrimLeft(lastData[7], Len(lastData[8]))
-            ConsoleWrite(_ArrayToString(lastData, "", 0, 6))
-        _WinAPI_CloseHandle(proc)
+    elseif ErrorStdOut and lastData <> "" then
+        ConsoleWrite(_FormatError(lastData))
+    _WinAPI_CloseHandle(proc)
+
+
+func _WaitClose(pid)
+    dim timer = TimerInit()
+    dim stdoutData, lastData = "", lastLoop = False
+    while True
+        StdinWrite(pid, ConsoleRead())
+        ConsoleWriteError(StderrRead(pid))
+        if ErrorStdOut then
+            stdoutData = StdoutRead(pid)
+            if stdoutData <> "" then lastData = stdoutData
+            ConsoleWrite(stdoutData)
+        else
+            ConsoleWrite(StdoutRead(pid))
+        if lastLoop then exitloop
+        if TimerDiff(timer) > 300 then
+            if not ProcessExists(pid) then lastLoop = True
+            timer = TimerInit()
+        GUIGetMsg()  ; prevents hogging of the CPU
+    return lastData
+
+
+func _FormatError(dim errorData)
+    ; TODO: catch more than one error in message
+    errorData = ReFind(errorData, _
+        '[^"]*("?)([a-zA-Z]:\\.+?\\.+?\.au[p3])(\.au3)("? \()(\d+)' _
+        . '(\) : ==> )(.+?)\.: ?\R(.+\R)([^^]*)(\^ ERROR\R)$', _
+        @ReArray)
+    const line = ReadLine(errorData[1] . errorData[2], errorData[4])
+    errorData[2] = ""
+    errorData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
+    errorData[6] .= ": " . TrimLeft(errorData[7], Len(errorData[8]))
+    return _ArrayToString(errorData, "", 0, 6)
 
 
 ;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
