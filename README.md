@@ -195,7 +195,11 @@ Also you can turn off data exchange through standard input/output streams, then 
 
 After installation Plys already integrated to Windows shell. If you want to run a script by command line use
 
-```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/ErrorStdOut] <script path> [<arguments>]```
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Rapid] [/ErrorStdOut] <script path> [<arguments>]```
+
+`/Rapid` means that if source files have not be modified since the previous run, they will not be re-translated. This option speeds up startup.
+
+The `/ErrorStdOut` switch allows the redirection of a fatal error to StdOut which can then be captured by an application.
 
 If you want to translate a script to pure AutoIt code use
 

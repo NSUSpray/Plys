@@ -11,6 +11,7 @@ enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
 ; Translation settings
 const MainTokenDelim = Chr(0x0C)  ; form feed
+const LineNumCommentPrefix = @tab . @tab . "; #"
 const LambdaNameLen = 36
 const TabInSpaces = "    "
 const PublicSuffixRegEx = "\*"
@@ -252,36 +253,37 @@ func MakeThruTable()
 func ProcessFiles()
 ;··············································································
     dim sourcePath, targetPath, isPlysFile
-    dim main, misc  ; storages for processing file data
+    dim mainText, miscTokens  ; storages for processing file data
 
     for module = 1 to DepTable[0][0]
         sourcePath = InputFileDir . "\" . DepTable[module][0]
         targetPath = PathPart(sourcePath, "drive", "ext") . ".au3"
         if RapidMode then
-            if FileExists(targetPath) _
-                    and GetTime(sourcePath, 0, 1) _
-                            < GetTime(targetPath, 0, 1) then
-                continueloop
+            if _OldSource(sourcePath, targetPath) then continueloop
         elseif RunMode then
             Add(PathsToDeleteOnExit, targetPath)
         isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
-        main = Read(sourcePath)
-        misc = _SeparateMain(main)
+        mainText = Read(sourcePath)
 
-        if isPlysFile then        
+        if RunMode then _EnumerateLines(mainText)
+        if isPlysFile and Synonyms and module = 1 then
+            _AppendDefaultLibs(mainText)
+        miscTokens = _SeparateMain(mainText)
+        if isPlysFile then
+            if CloseBlockByIndent then _CloseBlocks(mainText)
             if LambdaFunctions then
-                Add(DepTable[0][module], _ProcessLambdas(main, misc))
-            if CloseBlockByIndent then _CloseBlocks(main)
-            if NoDollarPrefix then _AddVarPrefixes(main, DepTable[0][module])
-            _RemoveAsterisks(main)
-            if ConstByDefault then _ToggleDimConst(main)
-        if ImportKeyword then _ProcessImports(main, module, isPlysFile)
-        if Synonyms and isPlysFile then
-            _RenameSynonyms(main, module = 1)
+                Add(DepTable[0][module], _ProcessLambdas(mainText, miscTokens))
+            if NoDollarPrefix then
+                _AddVarPrefixes(mainText, DepTable[0][module])
+            _RemoveAsterisks(mainText)
+            if ConstByDefault then _ToggleDimConst(mainText)
+        if ImportKeyword then _ProcessImports(mainText, module, isPlysFile)
+        if isPlysFile and Synonyms then
+            _RenameSynonyms(mainText)
+        _CombineTokens(mainText, miscTokens)
 
-        _CombineTokens(main, misc)
         FileDelete(targetPath)
-        Write(targetPath, main)
+        Write(targetPath, mainText)
         if RunMode then
             SetAttrib(targetPath, "+H")
         else
@@ -289,47 +291,39 @@ func ProcessFiles()
     next module
 
 
+func _OldSource(sourcePath, targetPath)
+    return FileExists(targetPath) _
+            and GetTime(sourcePath, 0, 1) < GetTime(targetPath, 0, 1)
+
+
+func _EnumerateLines(dim byref text)
+    text = Split(text, @, @EntireSplit + @NoCount)
+    for i = 0 to UBound(text) - 1
+        if not ReFind(text[i], "^\s*$") then
+            text[i] .= LineNumCommentPrefix . (i + 1)
+    text = _ArrayToString(text, @)
+
+
+func _AppendDefaultLibs(dim byref text)
+    text = ReReplace(text, "(?im)^(?!#au)", _
+            "#include <StringConstants.au3>" . @ _
+            . "#include <Array.au3>" . @, 1); _
+            ; . "#include <Function.au3>" . @, 1)
+
+
 func _SeparateMain(dim byref txt)
     const miscPattern = "(?m)" _
         . "^\s*#cs(?s:.*?)#ce.*" _
         . "|^\s*#comments-start(?s:.*?)#comments-end.*" _
         . "|^\s*#.*" _
-        . '|".*?[^"]"(?!")' _
-        . "|'.*?[^']'(?!')" _
-        . "|\s_\h*(?:;.*)?" _
+        . '|"(?:[^"]|"")*"' _
+        . "|'(?:[^']|'')*'" _
+        . "|\s_\h*(?:;.*)?$" _
         . "|;.*" _
         . "|{.*?}"
-    const misc = ReFind(txt, miscPattern, @ReArrayGlobal)
-    txt = ReReplace(txt, miscPattern, MainDelimiter)
-    return misc
-
-
-func _ProcessLambdas(dim byref main, dim byref misc)
-    dim n = 0, lambdas = ""
-    dim name, args, expr
-    dim names[UBound(misc)]
-    for i = 0 to UBound(misc) - 1
-        if not ReFind(misc[i], "^{.*}$") then continueloop
-        do
-            name = ""
-            for j = 1 to LambdaNameLen
-                name .= Chr(Random(Asc("a"), Asc("z"), 1))
-        until Search(names, name) = -1
-        names[n] = name
-        n += 1
-        args = ReFind(misc[i], "(?:\{)([^:]*)", @ReArray)[0]
-        expr = ReFind(misc[i], "(?::)([^\}]+)", @ReArray)[0]
-        main = Split(main, MainDelimiter, @NoCount)
-        main[i] .= name
-        main = _ArrayToString(main, MainDelimiter)
-        misc[i] = ""
-        lambdas .= @ . @ _
-                . "func " . name . "(" . args . ")" . @ _
-                    . TabInSpaces . "return " . expr . @ _
-                . "endfunc" . @
-    main .= lambdas
-    redim names[n]
-    return names
+    const miscTokens = ReFind(txt, miscPattern, @ReArrayGlobal)
+    txt = ReReplace(txt, miscPattern, MainTokenDelim)
+    return miscTokens
 
 
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -358,9 +352,6 @@ func _CloseBlocks(dim byref text)
             continueloop
         ; if ReFind(text[i], "^\s*\#") then continueloop
         
-        if RunMode and not ReFind(text[i], "^\s*$") then
-            text[i] .= @tab . @tab . "; #" . (i + 1)
-        
         indentSize = Len(ReReplace(text[i], "^( *).*", "$1"))
         statement = ReReplace(text[i], "^ *(\w*).*", "$1")
         if ReFind(statement, "(?i)^(else)?if$") then
@@ -370,6 +361,8 @@ func _CloseBlocks(dim byref text)
             if ReFind(text[then_i], "(?i)\bthen\h.*?\S") then  ; with then expr
                 statement = ""
         if indentSize < prevIndentSize then
+        ; func __CloseOpenedBlocks _
+        ;         (statement, indentSize, prevIndentSize, stack)
             sttmnt = statement
             for is = indentSize to prevIndentSize - 1
                 if is > UBound(stack) - 1 then exitloop
@@ -416,6 +409,35 @@ func _CloseBlocks(dim byref text)
     text = ReReplace(text, "\Rend\.\s*(;.*)?$", "")
 
 
+func _ProcessLambdas(dim byref mainText, dim byref miscTokens)
+    dim names[UBound(miscTokens)]
+    dim n = 0, lambdas = ""
+    dim name, args, expr, lineNum
+    for i = 0 to UBound(miscTokens) - 1
+        if not ReFind(miscTokens[i], "^{.*}$") then continueloop
+        do
+            name = ""
+            for j = 1 to LambdaNameLen
+                name .= Chr(Random(Asc("a"), Asc("z"), 1))
+        until Search(names, name) = -1
+        names[n] = name
+        n += 1
+        args = ReFind(miscTokens[i], "(?:\{)([^:]*)", @ReArray)[0]
+        expr = ReFind(miscTokens[i], "(?::)([^\}]+)", @ReArray)[0]
+        mainText = Split(mainText, MainTokenDelim, @NoCount)
+        mainText[i] .= name
+        mainText = _ArrayToString(mainText, MainTokenDelim)
+        miscTokens[i] = ""
+        lineNum = LineNumCommentPrefix . (i + 1)
+        lambdas .= @ . @ _
+                . "func " . name . "(" . args . ")" . lineNum . @ _
+                    . TabInSpaces . "return " . expr . lineNum . @ _
+                . "endfunc" . @
+    mainText .= lambdas
+    redim names[n]
+    return names
+
+
 func _AddVarPrefixes(dim byref text, dim names)
     if IsArray(names) then
         names = _ArrayToString(names)
@@ -425,7 +447,7 @@ func _AddVarPrefixes(dim byref text, dim names)
     else
         names = ""
     ; FIXME: call function, stored in variable: $foo($bar, $buz)
-    ReReplace(text, "(?i)" _
+    text = ReReplace(text, "(?i)" _
             . "(?(?=" _  ; if look ahead one of this
             . "\b(_|and|byref|case|const|continuecase|continueloop|default|" _
             . "dim|do|else|elseif|endfunc|endif|endselect|endswitch|endwith|" _
@@ -448,7 +470,7 @@ func _RemoveAsterisks(dim byref text)
     const varsDeclars = ReFind(text, "(?im)^" _
             . (ConstByDefault? _
                     "(?:\s*global\s+)?(?:dim|const|enum)" _
-                    : "\s*global")
+                    : "\s*global") _
             . "\s+(.*)", @ReArrayGlobal)
     if not IsArray(varsDeclars) then return
     ; FIXME: "const $bar = foo(1, 2)" → ["$bar = foo(1", " 2)"]
@@ -539,20 +561,21 @@ func __ReplaceOwnNames(dim byref text, module)
     ; purified filename
     dim prefix = PathPart(DepTable[module][0], "dir", "name")
     prefix = ReReplace(prefix, "\W", "_")
+    const suffix = GetTime(DepTable[module][0], 0, 1)
     ; TODO: put names into pattern (name|name|…)
     ; and replace it in one fell swoop
     for name in names
         if Left(name, 1) = "$" then  ; is variable
-            ReReplace(text, _
+            text = ReReplace(text, _
                     "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
                         . TrimLeft(name, 1) . ")([^\w""'])", _
-                    "$1\$" . prefix . "_$2$3")
+                    "$1\$" . prefix . "_$2__". suffix . "$3")
         else  ; is function
             prefix = ReReplace(prefix, "^[0-9]", "_$1")
-            ReReplace(text, _
+            text = ReReplace(text, _
                     "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
                     . ")([^\w""'])", _
-                    "${1}" . prefix . "_$2$3")
+                    "${1}" . prefix . "_$2__". suffix . "$3")
 
 
 ;··············································································
@@ -561,7 +584,7 @@ func __ReplaceNotOwnNames(dim byref text, module)
 ;··············································································
     const depTypes = [ImportDep, IncludeDep, MirIncludeDep]
     dim names
-    dim filename, prefix, varPrefix, isPublic
+    dim filename, prefix, suffix, varPrefix, isPublic
     for depType in depTypes
         for dep = 1 to DepTable[0][0]
             if ThruTable[module][dep] <> depType then continueloop
@@ -573,6 +596,7 @@ func __ReplaceNotOwnNames(dim byref text, module)
             prefix = PathPart(DepTable[dep][0], "dir")
             prefix = ReReplace(prefix, "\W", "_")
             prefix .= filename
+            suffix = GetTime(DepTable[dep][0], 0, 1)
             for name in names
                 if Left(name, 1) = "$" then  ; is variable
                     name = TrimLeft(name, 1)
@@ -586,55 +610,55 @@ func __ReplaceNotOwnNames(dim byref text, module)
                 else
                     isPublic = False
                 if ThruTable[module][dep] <> ImportDep then
-                    ReReplace(text, _
+                    text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . varPrefix . name _
                             . "([^\w""'])", _
                             "${1}" . varPrefix . prefix . "_" . name _
-                            . "$2")
+                            . "__" . suffix . "$2")
                 elseif isPublic then  ; ImportDep and isPublic
-                    ReReplace(text, _
+                    text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . filename _
                             . NameDelimRegEx . varPrefix . name _
                             . "([^\w""'])", "${1}" . varPrefix . prefix _
-                            . "_" . name . "$2")
+                            . "_" . name . "__" . suffix . "$2")
 
 
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-func _RenameSynonyms(dim byref text, isMainModule)
+func _RenameSynonyms(dim byref text)
 ; TODO: remove Get prefixes
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-        ReReplace(text, "(?i)\bEcho\b", "ConsoleWrite")
+        text = ReReplace(text, "(?i)\bEcho\b", "ConsoleWrite")
         ; DllStruct ————————————————————————
-        ReReplace(text, "(?i)\bStruct\b", "DllStructCreate")
-        ReReplace(text, "(?i)\bStructGet\b", "DllStructGetData")
-        ReReplace(text, "(?i)\bStructGetSize\b", "DllStructGetSize")
-        ReReplace(text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
-        ReReplace(text, "(?i)\bStructSet\b", "DllStructSetData")
-        ReReplace(text, "(?i)\bIsStruct\b", "IsDllStruct")
+        text = ReReplace(text, "(?i)\bStruct\b", "DllStructCreate")
+        text = ReReplace(text, "(?i)\bStructGet\b", "DllStructGetData")
+        text = ReReplace(text, "(?i)\bStructGetSize\b", "DllStructGetSize")
+        text = ReReplace(text, "(?i)\bStructGetPtr\b", "DllStructGetPtr")
+        text = ReReplace(text, "(?i)\bStructSet\b", "DllStructSetData")
+        text = ReReplace(text, "(?i)\bIsStruct\b", "IsDllStruct")
         ; File —————————————————————————————
-        ReReplace(text, "(?i)\b(" _
+        text = ReReplace(text, "(?i)\b(" _
                 . "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" _
                 . "GetEncoding|GetLongName|GetShortcut|GetShortName|GetSize|" _
                 . "GetTime|GetVersion|Open|OpenDialog|Read|ReadLine|" _
                 . "ReadToArray|Recycle|RecycleEmpty|SaveDialog|SelectFolder|" _
                 . "SetAttrib|SetEnd|SetPos|SetTime|Write|WriteLine" _
                 . ")\b", "File$1")
-        ReReplace(text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
-        ReReplace(text, "(?i)\bFirstFile\b", "FileFindFirstFile")
-        ReReplace(text, "(?i)\bNextFile\b", "FileFindNextFile")
+        text = ReReplace(text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
+        text = ReReplace(text, "(?i)\bFirstFile\b", "FileFindFirstFile")
+        text = ReReplace(text, "(?i)\bNextFile\b", "FileFindNextFile")
         ; **Close|**Delete|**Exists|**GetPos|Install|**Move
         ; String ———————————————————————————
-        ReReplace(text, "(?i)\b(" _
+        text = ReReplace(text, "(?i)\b(" _
                 . "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" _
                 . "IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" _
                 . "Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" _
                 . "Upper" _
                 . ")\b", "String$1")
-        ReReplace(text, "(?i)\bReFind\b", "StringRegExp")
-        ReReplace(text, "(?i)\bReReplace\b", "StringRegExpReplace")
+        text = ReReplace(text, "(?i)\bReFind\b", "StringRegExp")
+        text = ReReplace(text, "(?i)\bReReplace\b", "StringRegExpReplace")
         ; Compare|FromASCIIArray|*IsFloat|*IsInt|**Reverse|ToASCIIArray
         ; Win ——————————————————————————————
-        ReReplace(text, "(?i)\b(" _
+        text = ReReplace(text, "(?i)\b(" _
                 . "Activate|Active|Flash|GetCaretPos|GetClassList|" _
                 . "GetClientSize|GetProcess|GetTitle|Kill|List|" _
                 . "MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" _
@@ -643,47 +667,41 @@ func _RenameSynonyms(dim byref text, isMainModule)
         ; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move
         ; |*SetState
         ; Macros ———————————————————————————
-        ReReplace(text, "(?i)(@)(" _
+        text = ReReplace(text, "(?i)(@)(" _
                 . "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" _
                 . "StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" _
                 . "NoCount|EndNotStart|UTF16|UCS2" _
                 . ")\b", "$Str_$2")
-        ReReplace(text, "(?i)(@Re)(" _
+        text = ReReplace(text, "(?i)(@Re)(" _
                 . "Array|ArrayFull|ArrayGlobal|ArrayGlobalFull" _
                 . ")\b", "$Str_RegExp$2Match")
-        ReReplace(text, "(?i)@ReMatch\b", "$STR_REGEXPMATCH")
-        ReReplace(text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
-        ReReplace(text, "(?i)@CmdLine\b", "$CmdLine")
-        ReReplace(text, "@(\W)", "@CRLF$1")
+        text = ReReplace(text, "(?i)@ReMatch\b", "$STR_REGEXPMATCH")
+        text = ReReplace(text, "(?i)@ActiveWin\b", 'WinGetHandle("[ACTIVE]")')
+        text = ReReplace(text, "(?i)@CmdLine\b", "$CmdLine")
+        text = ReReplace(text, "@(\W)", "@CRLF$1")
         ; _Array ———————————————————————————
-        ReReplace(text, "(?i)\b(" _
+        text = ReReplace(text, "(?i)\b(" _
                 . "Add|ColDelete|ColInsert|Combinations|Display|Extract|" _
                 . "FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" _
                 . "Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" _
                 . "Unique" _
                 . ")\b", "_Array$1")
-        ; ReReplace(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
-        ReReplace(text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
-        ReReplace(text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
-        ReReplace(text, "(?i)\bConcat\b", "_ArrayConcatenate")
+        ; text = ReReplace(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
+        text = ReReplace(text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
+        text = ReReplace(text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
+        text = ReReplace(text, "(?i)\bConcat\b", "_ArrayConcatenate")
         ; **Delete|**Reverse|*ToString
         ; ——————————————————————————————————
-        ReReplace(text, "(\s)\.(\s)", "$1&$2")
-        ReReplace(text, "\.=", "&=")
-        if isMainModule then
-            text = _ArrayToString(text, "", -1, -1, "", 0, 0)
-            text = ReReplace(text, "(?im)^(?!#au)", _
-                    "#include <StringConstants.au3>" . @ _
-                    . "#include <Array.au3>" . @, 1); _
-                    ; . "#include <Function.au3>" . @, 1)
+        text = ReReplace(text, "(\W)\.(\W)", "$1&$2")
+        text = ReReplace(text, "\.=", "&=")
 
 
-func _CombineTokens(dim byref main, byref misc)
-    main = Split(main, MainTokenDelim, @NoCount)
+func _CombineTokens(dim byref mainText, byref miscTokens)
+    mainText = Split(mainText, MainTokenDelim, @NoCount)
     dim text = ""
-    for i = 0 to UBound(misc) - 1
-        text .= main[i] . misc[i]
-    main = text . main[i]
+    for i = 0 to UBound(miscTokens) - 1
+        text .= mainText[i] . miscTokens[i]
+    mainText = text . mainText[i]
 
 
 func ProcessStdio(pid)
@@ -724,13 +742,21 @@ func _WaitClose(pid)
 
 func _FormatError(dim errorData)
     ; TODO: catch more than one error in message
-    errorData = ReFind(errorData, _
-            '[^"]*("?)([a-zA-Z]:\\.+?\.au[p3])(\.au3)("? \()(\d+)' _
-            . '(\) : ==> )(.+?)\.: ?\R(.+\R)(.*)(\^ ERROR\R)$', _
+    errorData = ReFind(errorData, '[^"]*("?)' _  ; 0: "
+            . '([a-zA-Z]:\\.+?\.au[p3])' _  ; 1: C:\.aup
+            . '(\.au3)' _  ; 2: .au3
+            . '("? \()' _  ; 3: " (
+            . '(\d+)' _  ; 4: line number
+            . '(\) : ==> )' _  ; 5: ) : ==> 
+            . '(.+?)\.: ?\R' _  ; 6: Message.:
+            . '(.+\R)' _  ; 7: statemXnt
+            . '(.*?)' _  ; 8: statem
+            . '(\^ ERROR\R)?$', _  ; 9: ^ ERROR
             @ReArray)
     const line = ReadLine(errorData[1] . errorData[2], errorData[4])
     errorData[2] = ""
-    errorData[4] = ReReplace(line, ".*?\t\t; #(\d+)$", "$1")
+    errorData[4] = _
+            ReReplace(line, ".*?" . LineNumCommentPrefix . "(\d+)$", "$1")
     errorData[6] .= ": " . TrimLeft(errorData[7], Len(errorData[8]))
     return _ArrayToString(errorData, "", 0, 6)
 

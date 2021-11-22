@@ -114,10 +114,10 @@ func TranslateExamples(byref dim txt)
                 if not ReFind(arg, "\bconst\b") then
                     ReFind(arg, "[a-zA-Z]", @ReArray)
                     pos = @Extended - 2
-                    newFuncDeclar = Replace _
-                        (newFuncDeclar, arg, Left(arg, pos) . "dim " . Mid(arg, pos + 1))
-            newFuncDeclar = ReReplace _
-                (newFuncDeclar, "\bconst\s+", "")  ; delete “const”
+                    newFuncDeclar = Replace(newFuncDeclar, arg, _
+                        Left(arg, pos) . "dim " . Mid(arg, pos + 1))
+            ; delete “const”
+            newFuncDeclar = ReReplace(newFuncDeclar, "\bconst\s+", "")
             txt = Replace(txt, funcDeclar, newFuncDeclar)
 
     txt = ReReplace(txt, "(\s)&(\s)", "$1.$2")
