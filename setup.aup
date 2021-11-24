@@ -10,15 +10,15 @@ const Au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
 const TemplateFilePath = @WindowsDir . "\ShellNew\Template.aup"
  
 
-if FileExists(Au3exeDir . "Plys\plys.au3") then
+if FileExists(Au3exeDir . "Plys\plys.aup.au3") then
     Uninstall()
 else
     Install()
 
 
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
 func Install()
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
     dim answer
     if not SilentMode then
         answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
@@ -32,8 +32,8 @@ func Install()
     DirCreate(Au3exeDir . "Plys")
 
     ; copy translator and this file
-    Copy("plys.au3", Au3exeDir . "Plys\", FC_OVERWRITE)
-    Copy(@ScriptFullPath, Au3exeDir . "Plys\uninstall.au3", FC_OVERWRITE)
+    Copy("plys.aup.au3", Au3exeDir . "Plys\", FC_OVERWRITE)
+    Copy(@ScriptFullPath, Au3exeDir . "Plys\uninstall.aup.au3", FC_OVERWRITE)
     
     ; copy template file
     dim templFileData = Read(@WindowsDir . "\ShellNew\Template.au3")
@@ -75,7 +75,7 @@ func Install()
     RegWrite("HKCR\AutoItPlysScript\Shell\Run", "", "REG_SZ", "Run Script")
         const runCmd = RegRead("HKCR\AutoIt3Script\Shell\Run\Command", "")
         const arg0 = ReReplace(runCmd, ' ".*', "")
-        const arg1 = Replace(arg0, "AutoIt3.exe", "Plys\plys.au3")
+        const arg1 = Replace(arg0, "AutoIt3.exe", "Plys\plys.aup.au3")
         RegWrite("HKCR\AutoItPlysScript\Shell\Run\Command", "", "REG_SZ", _
                 arg0 . " " . arg1 . ' /Rapid "%1" %*')
     RegWrite("HKCR\AutoItPlysScript\Shell\Retranslate and Run", "", "REG_SZ", _
@@ -103,7 +103,7 @@ func Uninstall()
         answer = MsgBox(MB_OKCANCEL + MB_DEFBUTTON2, _
                 "Uninstall Plys for AutoIt?", _
                 "Plys already installed. Uninstalling Plys will delete" _
-                . " existing data of plys.au3 file.")
+                . " existing data of plys.aup.au3 file.")
         if answer <> IDOK then exit
     TraySetIcon("stop")
     TraySetState(TRAY_ICONSTATE_FLASH)

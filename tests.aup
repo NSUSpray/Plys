@@ -1,0 +1,54 @@
+#include <C:\Program Files (x86)\AutoIt3\Plys\plys.au3>
+Opt("MustDeclareVars", 0)
+
+plys = ReReplace(@AutoItExe, "AutoIt3\.exe$", "", 1) . "Plys\plys.au3"
+
+test(import1)
+test(import2)
+test(then1)
+test(then2)
+
+
+func test(f)
+	Echo(FuncName(f) . ": ")
+	Echo($f()? "done" : "fail")
+	Echo(@)
+
+
+func import1()
+	src = @ScriptDir . '\import.src.aup'
+	FileDelete(src)
+	FileWrite(src, ' #include  "lib.aup" ;' . @ . '#import "lib.aup"' . @)
+	au3 = src . ".au3"
+	cmd = '"' . @AutoItExe . '" "' . plys . '" /Translate "' . src . '"'
+	RunWait(cmd)
+	FileDelete(src)
+	txt = Read(au3)
+	FileDelete(au3)
+	return ReFind(txt, _
+			'\R #include  "lib\.aup\.au3" ;\R' _
+			. '; PLYS #import "lib\.aup"\R$')
+
+
+func import2()
+	miscTokens = Split _
+			(' #include  "lib.aup"|#import "lib.aup"|#include "lib.aup"', _
+				"|", @NoCount)
+	module = -1
+	isPlysFile = False
+	_ProcessImports(miscTokens, module, isPlysFile)
+	return _ArrayToString(miscTokens) == _
+			' #include  "lib.aup.au3"|#import "lib.aup"|#include "lib.aup.au3"'
+
+
+func then1()
+	mainText = "if True then _  ; xxx" . @ . @tab . "Echo(1)" . @
+	_CloseBlocks(mainText)
+	return mainText == "if True then _  ; xxx" . @ . "    Echo(1)" . @
+
+
+func then2()
+	mainText = "if True then" . @ . @tab . "Echo(1)"
+	_CloseBlocks(mainText)
+	return mainText == _
+			"if True then" . @ . "    Echo(1)" . @ . "endif"

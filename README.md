@@ -98,7 +98,7 @@ for i = 1 to 5
 This inconspicuous wrapper complements the AutoIt language with
 
 1. preprocessor keyword **#import** in addition to *#include* similar to [*import* in Python](https://en.wikibooks.org/wiki/Python_Programming/Modules#Importing_a_Module)
-1. Python-like blocking by lines indentation (without *endfunc*, *wend* etc.)
+1. Python-like code blocks by lines indentation (without *endfunc*, *wend* etc.)
 1. **dim** and **const** outside of functions means *global* and *global const* respectively, inside of functions means *local* and *local const*
 1. arguments of function are *const* by default, but with *dim* prefix it becomes variable
 1. lighter [synonyms](synonyms.md) for functions, macros and operators as a rule using in large projects: for arrays, files and strings
@@ -129,7 +129,7 @@ func quux(dim arg="one/two/three")
 ...
 ```
 
-In this example variable *bar* and function *quux()* are private for module *mylib.aup* (names at declaration ends with an asterisk) and not visible in *main.aup*. Variable *foo* and function *baz()* will be visible with the “mylib:” prefix:
+In this example variable *bar* and function *quux()* are private for module *mylib.aup* (names at declaration without an asterisk at the end) and not visible in *main.aup*. Variable *foo* and function *baz()* will be visible with the “mylib:” prefix:
 
 ```autoit
 ; file “main.aup”

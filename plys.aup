@@ -11,6 +11,7 @@ enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
 ; Translation settings
 const MainTokenDelim = Chr(0x0C)  ; form feed
+const MiscTokenDelim = Chr(0x0B)  ; vertical tab
 const LineNumCommentPrefix = @tab . @tab . "; #"
 const LambdaNameLen = 36
 const TabInSpaces = "    "
@@ -50,7 +51,7 @@ dim ThruTable
 dim PathsToDeleteOnExit[0]
 
 
-Main()
+if @ScriptName == "plys.aup.au3" then Main()
 
 
 func Main*()
@@ -149,12 +150,12 @@ func GetDeps(dim byref DepTable, rel_path)
     DepTable[0][module] = _FindNames(text)
     
     const relrel_includes = _
-            ReFind(text, '(?m)^\#include\s+"(.+?)"', @ReArrayGlobal)
+            ReFind(text, '(?m)^\s*\#include\s+"(.+?)"', @ReArrayGlobal)
     const importEnabled = _
             ImportKeyword and PathPart(rel_path, "ext") = ".aup"
     if importEnabled then
         const relrel_imports = _
-                ReFind(text, '(?m)^\#import\s+"(.+?)"', @ReArrayGlobal)
+                ReFind(text, '(?m)^\s*\#import\s+"(.+?)"', @ReArrayGlobal)
     text = ""
     const depTypes = [IncludeDep, ImportDep]
     dim relrel_deps, rel_dep, dep
@@ -257,6 +258,7 @@ func ProcessFiles()
 
     for module = 1 to DepTable[0][0]
         sourcePath = InputFileDir . "\" . DepTable[module][0]
+        if not FileExists(sourcePath) then continueloop
         targetPath = PathPart(sourcePath, "drive", "ext") . ".au3"
         if RapidMode then
             if _OldSource(sourcePath, targetPath) then continueloop
@@ -277,7 +279,10 @@ func ProcessFiles()
                 _AddVarPrefixes(mainText, DepTable[0][module])
             _RemoveAsterisks(mainText)
             if ConstByDefault then _ToggleDimConst(mainText)
-        if ImportKeyword then _ProcessImports(mainText, module, isPlysFile)
+        if ImportKeyword then
+            _ProcessImports(miscTokens, module, isPlysFile)
+            if DepTable[0][0] > 1 then _ReplaceOwnNames(mainText, module)
+            _ReplaceNotOwnNames(mainText, module)
         if isPlysFile and Synonyms then
             _RenameSynonyms(mainText)
         _CombineTokens(mainText, miscTokens)
@@ -321,7 +326,9 @@ func _SeparateMain(dim byref txt)
         . "|\s_\h*(?:;.*)?$" _
         . "|;.*" _
         . "|{.*?}"
-    const miscTokens = ReFind(txt, miscPattern, @ReArrayGlobal)
+    dim miscTokens = ReFind(txt, miscPattern, @ReArrayGlobal)
+    if @error then
+        dim miscTokens[0]
     txt = ReReplace(txt, miscPattern, MainTokenDelim)
     return miscTokens
 
@@ -516,18 +523,20 @@ func _ToggleDimConst(dim byref text)
             text = Replace(text, funcDeclar, newFuncDeclar)
 
 
-func _ProcessImports(dim byref text, module, isPlysFile)
-    if isPlysFile then __PreventReimporting(text, module)
-            
+func _ProcessImports(dim byref miscTokens, module, isPlysFile)
+    miscTokens = _ArrayToString(miscTokens, MiscTokenDelim)
+
+    if isPlysFile then __PreventReimporting(miscTokens, module)
+    
     ; replace “#include/#import "path\name.ext"”
     ; with “#include "path\%target_prefix%name.ext.au3"”
-    text = ReReplace(text, _
-            '(?m)^\#(include' . (isPlysFile? "|import" : "") _
-            . ')\s+"(.*\\)?(.*?)"(.*)$', _
-            '#include "$2$3\.au3"$4')
-    
-    if DepTable[0][0] > 1 then __ReplaceOwnNames(text, module)
-    __ReplaceNotOwnNames(text, module)
+    miscTokens = ReReplace(miscTokens, _
+            "((?:^|" . MiscTokenDelim . ')\s*)\#(?:include' _
+            . (isPlysFile? "|import" : "") _
+            . ')(\s+)"(.*?)"', _
+            '$1\#include$2"$3\.au3"')
+
+    miscTokens = Split(miscTokens, MiscTokenDelim, @NoCount)
 
 
 func __PreventReimporting(dim byref text, module)
@@ -541,21 +550,24 @@ func __PreventReimporting(dim byref text, module)
             relrel_dep = Replace(relrel_dep, rel_dirSlash, "")
         relrel_dep = ReReplace(relrel_dep, "[\\.^$[({+#]", "\\$0")
         text = ReReplace(text, _
-                '(?m)^\s*\#(include|import)\s+[<"]' _
-                . relrel_dep _
-                . '[>"]', _
-                ";PLYS $0")
+                "(" . MiscTokenDelim . "\s*)" _
+                . '(\#(?:include|import)\s+[<"]' _
+                . relrel_dep . '[>"])', _
+                "$1; PLYS $2")
         foundInPrev = False
         for prev = 1 to module - 1
             if DepTable[prev][dep] then
                 foundInPrev = True
                 exitloop
         if not foundInPrev then  ; uncomment first
-            text = ReReplace(text, '(?m)^;PLYS (\#(include|import)\s+[<"]' _
-                    . relrel_dep . '[>"])', "$1", 1)
+            text = ReReplace(text, _
+                    "(" . MiscTokenDelim . "\s*)" _
+                    . '; PLYS (\#(?:include|import)\s+[<"]' _
+                    . relrel_dep . '[>"])', _
+                    "$1$2", 1)
 
 
-func __ReplaceOwnNames(dim byref text, module)
+func _ReplaceOwnNames(dim byref text, module)
     const names = DepTable[0][module]
     if not IsArray(names) then return
     ; purified filename
@@ -569,17 +581,17 @@ func __ReplaceOwnNames(dim byref text, module)
             text = ReReplace(text, _
                     "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
                         . TrimLeft(name, 1) . ")([^\w""'])", _
-                    "$1\$" . prefix . "_$2__". suffix . "$3")
+                    "$1\$" . prefix . "_$2__" . suffix . "$3")
         else  ; is function
             prefix = ReReplace(prefix, "^[0-9]", "_$1")
             text = ReReplace(text, _
                     "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
                     . ")([^\w""'])", _
-                    "${1}" . prefix . "_$2__". suffix . "$3")
+                    "${1}" . prefix . "_$2__" . suffix . "$3")
 
 
 ;··············································································
-func __ReplaceNotOwnNames(dim byref text, module)
+func _ReplaceNotOwnNames(dim byref text, module)
 ; replace names from ThruTable[0][dep] in module file
 ;··············································································
     const depTypes = [ImportDep, IncludeDep, MirIncludeDep]
@@ -699,7 +711,7 @@ func _RenameSynonyms(dim byref text)
 func _CombineTokens(dim byref mainText, byref miscTokens)
     mainText = Split(mainText, MainTokenDelim, @NoCount)
     dim text = ""
-    for i = 0 to UBound(miscTokens) - 1
+    for i = 0 to UBound(mainText) - 2
         text .= mainText[i] . miscTokens[i]
     mainText = text . mainText[i]
 
