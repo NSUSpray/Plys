@@ -188,13 +188,19 @@ func TranslateArticles(dir)
                     case "index", "introduction"
                         txt = Replace(txt, "<h1>AutoIt</h1>", "<h1>AutoIt Plys</h1>")
                         txt = Replace(txt, "<h1>", _
-                            '<p class="center">Plys &#169;2017-2021 Vladimir Zevakhin</p>' . _
-                            '<p class="center"><a class="ext" href="' . _
-                            'https://github.com/NSUSpray/Plys/' . _
-                            '" target="_blank">AutoIt Plys Homepage</a>' . _
-                            '</p><h1>')
-                        continuecase
-                Echo(ORIGIN_DIR . dir . name . @)
+                                '<p class="center">Plys &#169;2017-2021 ' _
+                                . 'Vladimir Zevakhin</p>' _
+                                . '<p class="center"><a class="ext" href="' _
+                                . 'https://github.com/NSUSpray/Plys/' _
+                                . '" target="_blank">AutoIt Plys Homepage' _
+                                . '</a></p><h1>')
+                    case "macros"
+                        txt = Replace(txt, "<strong>@</strong>", _
+                                "<strong>@ or @CRLF</strong>")
+                        _SortHeadingTable(txt, "<strong>(.+?)</strong>")
+                    case "AutoItRelated"
+                        txt = Replace(txt, "<strong>@</strong>", _
+                                "<strong>@ or @CRLF</strong>")
             elseif Right(name, 4) = ".css" then
                 txt = Replace(txt, "Courier New", "Consolas")
             file = Open(PROJECT_DIR . dir . name, _
@@ -202,6 +208,7 @@ func TranslateArticles(dir)
             Write(file, txt)
             FileClose(file)
             txt = ""
+            Echo(" +" . @)
     FileClose(hsearch)
 
 
@@ -221,16 +228,17 @@ func _SortHeadingSubs(byref dim txt, headingName)
     newSubs = _ArrayToString(newSubs, "")
     txt = Replace(txt, origSubs, newSubs)
 
-func _SortHeadingTable(byref dim txt)
+func _SortHeadingTable(byref dim txt, pattern)
     const origTable = ReFind(txt, _
-        '(?ms)^<table>\R<tr>.*?</tr>\R(.*?\R)</table>\R', @ReArray)[0]
+            '(?ms)^\s*<table>\R\s*<tr>.*?</tr>\R(.*?\R)\s*</table>\R', _
+            @ReArray)[0]
     dim newTable = _
         ReFind(origTable, '(?s)<tr>.*?</tr>\R', _
             @ReArrayGlobal)
     dim temp[UBound(newTable)][2]
     for i = 0 to UBound(newTable) - 1
         temp[i][0] = _
-            ReFind(newTable[i], '<a .+?>(\w+?)</a>', @ReArray)[0]
+                ReFind(newTable[i], pattern, @ReArray)[0]
         temp[i][1] = newTable[i]
     Sort(temp)
     for i = 0 to UBound(temp) - 1

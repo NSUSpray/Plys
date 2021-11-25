@@ -7,6 +7,10 @@ Opt("MustDeclareVars", 1)
 
 ; NOTE: rel_* - relative to InputFileDir, relrel_* - relative to rel_path
 
+const Version = "0.4.0"
+const PlysPathRegEx = _
+        __Re(PathPart(@AutoItExe, "drive", "dir") . "Plys\plys.aup.au3")
+
 enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
 ; Translation settings
@@ -19,8 +23,8 @@ const PublicSuffixRegEx = "\*"
 const NewSuffixLen = 2
 const NameDelimRegEx = ":"
 
-; Default project settings
-dim StdioExchange = True
+; Default Plys-file settings
+; TODO: individual for each Plys-file
 dim LambdaFunctions = False
 dim NoDollarPrefix = True
 dim ConstByDefault = True
@@ -29,11 +33,13 @@ dim ImportKeyword = True
 dim Synonyms = True
 
 ; Translator options
+dim StdioExchange = True  ; TODO: move this switch to commandline
 dim RunMode = True
 dim ErrorStdOut = False
 dim RapidMode = False
 dim InputFilePath
 dim InputFileDir
+dim InputFileNameExt
 
 ; Table of dependencies
 ;    Array size: DepTable[n+1][n+1]
@@ -45,13 +51,13 @@ dim InputFileDir
 dim DepTable[1][1] = [[0]]
 
 ; Table of visibilities: which module sees names from which module
-; (based on DepTable)
+; Based on DepTable
 dim ThruTable
 
 dim PathsToDeleteOnExit[0]
 
 
-if @ScriptName == "plys.aup.au3" then Main()
+if @ScriptName == "plys.aup" then Main()
 
 
 func Main*()
@@ -94,6 +100,7 @@ func ProcessCmdLine()
         InputFilePath = @CmdLine[pathIndex]
 
     InputFileDir = PathPart(InputFilePath, "drive", "dir")
+    InputFileNameExt = PathPart(InputFilePath, "name", "ext")
 
     const argc = @CmdLine[0] - pathIndex
     if argc = 0 then return ""
@@ -283,6 +290,7 @@ func ProcessFiles()
             _ProcessImports(miscTokens, module, isPlysFile)
             if DepTable[0][0] > 1 then _ReplaceOwnNames(mainText, module)
             _ReplaceNotOwnNames(mainText, module)
+        _SubstituteMacros(mainText)
         if isPlysFile and Synonyms then
             _RenameSynonyms(mainText)
         _CombineTokens(mainText, miscTokens)
@@ -310,7 +318,7 @@ func _EnumerateLines(dim byref text)
 
 
 func _AppendDefaultLibs(dim byref text)
-    text = ReReplace(text, "(?im)^(?!#au)", _
+    text = ReReplace(text, "(?im)^(?!\#au)", _
             "#include <StringConstants.au3>" . @ _
             . "#include <Array.au3>" . @, 1); _
             ; . "#include <Function.au3>" . @, 1)
@@ -318,9 +326,9 @@ func _AppendDefaultLibs(dim byref text)
 
 func _SeparateMain(dim byref txt)
     const miscPattern = "(?m)" _
-        . "^\s*#cs(?s:.*?)#ce.*" _
-        . "|^\s*#comments-start(?s:.*?)#comments-end.*" _
-        . "|^\s*#.*" _
+        . "^\s*\#cs(?s:.*?)\#ce.*" _
+        . "|^\s*\#comments-start(?s:.*?)\#comments-end.*" _
+        . "|^\s*\#.*" _
         . '|"(?:[^"]|"")*"' _
         . "|'(?:[^']|'')*'" _
         . "|\s_\h*(?:;.*)?$" _
@@ -421,7 +429,7 @@ func _ProcessLambdas(dim byref mainText, dim byref miscTokens)
     dim n = 0, lambdas = ""
     dim name, args, expr, lineNum
     for i = 0 to UBound(miscTokens) - 1
-        if not ReFind(miscTokens[i], "^{.*}$") then continueloop
+        if not ReFind(miscTokens[i], "^\{.*}$") then continueloop
         do
             name = ""
             for j = 1 to LambdaNameLen
@@ -430,7 +438,7 @@ func _ProcessLambdas(dim byref mainText, dim byref miscTokens)
         names[n] = name
         n += 1
         args = ReFind(miscTokens[i], "(?:\{)([^:]*)", @ReArray)[0]
-        expr = ReFind(miscTokens[i], "(?::)([^\}]+)", @ReArray)[0]
+        expr = ReFind(miscTokens[i], "(?::)([^}]+)", @ReArray)[0]
         mainText = Split(mainText, MainTokenDelim, @NoCount)
         mainText[i] .= name
         mainText = _ArrayToString(mainText, MainTokenDelim)
@@ -507,7 +515,7 @@ func _ToggleDimConst(dim byref text)
             "(?im)^(\s+)dim(\s+\$)", "$1local$2")
     dim funcDeclars = ReFind(text, "(?im)^\s*func\s+.*$", @ReArrayGlobal)
     if IsArray(funcDeclars) then
-        dim newFuncDeclar, args
+        dim newFuncDeclar, args, pos
         for funcDeclar in funcDeclars
             newFuncDeclar = funcDeclar
             args = ReReplace(funcDeclar, _
@@ -516,10 +524,12 @@ func _ToggleDimConst(dim byref text)
             args = Split(args, ",", @NoCount)
             for arg in args  ; insert “const”
                 if not ReFind(arg, "\b(const|dim)\b") then
-                    newFuncDeclar = _
-                            Replace(newFuncDeclar, arg, " const " . arg)
-            newFuncDeclar = _
-                    ReReplace(newFuncDeclar, "\bdim\s+", "")  ; delete “dim”
+                    ReFind(arg, "[a-zA-Z_\$]", @ReArray)
+                    pos = @extended - 2
+                    newFuncDeclar = Replace(newFuncDeclar, arg, _
+                            Left(arg, pos) . "const " . Mid(arg, pos + 1))
+            newFuncDeclar = ReReplace _
+                    (newFuncDeclar, "\bdim\s+", "")  ; delete “dim”
             text = Replace(text, funcDeclar, newFuncDeclar)
 
 
@@ -534,7 +544,7 @@ func _ProcessImports(dim byref miscTokens, module, isPlysFile)
             "((?:^|" . MiscTokenDelim . ')\s*)\#(?:include' _
             . (isPlysFile? "|import" : "") _
             . ')(\s+)"(.*?)"', _
-            '$1\#include$2"$3\.au3"')
+            '$1#include$2"$3.au3"')
 
     miscTokens = Split(miscTokens, MiscTokenDelim, @NoCount)
 
@@ -573,7 +583,7 @@ func _ReplaceOwnNames(dim byref text, module)
     ; purified filename
     dim prefix = PathPart(DepTable[module][0], "dir", "name")
     prefix = ReReplace(prefix, "\W", "_")
-    const suffix = GetTime(DepTable[module][0], 0, 1)
+    ;~const suffix = GetTime(DepTable[module][0], 0, 1)
     ; TODO: put names into pattern (name|name|…)
     ; and replace it in one fell swoop
     for name in names
@@ -581,13 +591,13 @@ func _ReplaceOwnNames(dim byref text, module)
             text = ReReplace(text, _
                     "(?im)([^\w""'" . NameDelimRegEx . "]|^)\$(" _
                         . TrimLeft(name, 1) . ")([^\w""'])", _
-                    "$1\$" . prefix . "_$2__" . suffix . "$3")
+                    "$1\$_" . prefix . "__$2$3")  ;~__" . suffix . "$3")
         else  ; is function
             prefix = ReReplace(prefix, "^[0-9]", "_$1")
             text = ReReplace(text, _
                     "(?im)([^\w""'\$" . NameDelimRegEx . "]|^)(" . name _
                     . ")([^\w""'])", _
-                    "${1}" . prefix . "_$2__" . suffix . "$3")
+                    "${1}_" . prefix . "__$2$3")  ;~__" . suffix . "$3")
 
 
 ;··············································································
@@ -596,7 +606,7 @@ func _ReplaceNotOwnNames(dim byref text, module)
 ;··············································································
     const depTypes = [ImportDep, IncludeDep, MirIncludeDep]
     dim names
-    dim filename, prefix, suffix, varPrefix, isPublic
+    dim filename, prefix, varPrefix, isPublic
     for depType in depTypes
         for dep = 1 to DepTable[0][0]
             if ThruTable[module][dep] <> depType then continueloop
@@ -608,7 +618,7 @@ func _ReplaceNotOwnNames(dim byref text, module)
             prefix = PathPart(DepTable[dep][0], "dir")
             prefix = ReReplace(prefix, "\W", "_")
             prefix .= filename
-            suffix = GetTime(DepTable[dep][0], 0, 1)
+            ;~suffix = GetTime(DepTable[dep][0], 0, 1)
             for name in names
                 if Left(name, 1) = "$" then  ; is variable
                     name = TrimLeft(name, 1)
@@ -625,19 +635,28 @@ func _ReplaceNotOwnNames(dim byref text, module)
                     text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . varPrefix . name _
                             . "([^\w""'])", _
-                            "${1}" . varPrefix . prefix . "_" . name _
-                            . "__" . suffix . "$2")
+                            "${1}" . varPrefix . "_" . prefix . "__" . name . "$2")  ;~ _
+                            ;~. "__" . suffix . "$2")
                 elseif isPublic then  ; ImportDep and isPublic
                     text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . filename _
                             . NameDelimRegEx . varPrefix . name _
-                            . "([^\w""'])", "${1}" . varPrefix . prefix _
-                            . "_" . name . "__" . suffix . "$2")
+                            . "([^\w""'])", "${1}" . varPrefix . "_" . prefix _
+                            . "__" . name . "$2")  ;~ . "__" . suffix . "$2")
+
+
+func _SubstituteMacros(dim byref text)
+    text = ReReplace(text, "(?i)@PlysPath\b", '"' . PlysPathRegEx . '"')
+    text = ReReplace(text, "(?i)@PlysVersion\b", '"' . Version . '"')
+    text = ReReplace(text, "(?i)@ScriptFullPath\b", _
+            '"' . __Re(InputFilePath) . '"')
+    text = ReReplace(text, "(?i)@ScriptName\b", _
+            '"' . __Re(InputFileNameExt) . '"')
 
 
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 func _RenameSynonyms(dim byref text)
-; TODO: remove Get prefixes
+; TODO: remove Get prefixes, move patterns to INI
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
         text = ReReplace(text, "(?i)\bEcho\b", "ConsoleWrite")
         ; DllStruct ————————————————————————
@@ -704,7 +723,7 @@ func _RenameSynonyms(dim byref text)
         text = ReReplace(text, "(?i)\bConcat\b", "_ArrayConcatenate")
         ; **Delete|**Reverse|*ToString
         ; ——————————————————————————————————
-        text = ReReplace(text, "(\W)\.(\W)", "$1&$2")
+        text = ReReplace(text, "\.(\W)", "&$1")
         text = ReReplace(text, "\.=", "&=")
 
 

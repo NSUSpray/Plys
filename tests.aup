@@ -1,21 +1,10 @@
-#include <C:\Program Files (x86)\AutoIt3\Plys\plys.au3>
+#include "plys.aup"
+#plys lambda
 Opt("MustDeclareVars", 0)
 
-plys = ReReplace(@AutoItExe, "AutoIt3\.exe$", "", 1) . "Plys\plys.au3"
+plys = ReReplace(@AutoItExe, "AutoIt3\.exe$", "", 1) . "Plys\plys.aup.au3"
 
-test(import1)
-test(import2)
-test(then1)
-test(then2)
-
-
-func test(f)
-	Echo(FuncName(f) . ": ")
-	Echo($f()? "done" : "fail")
-	Echo(@)
-
-
-func import1()
+func import()
 	src = @ScriptDir . '\import.src.aup'
 	FileDelete(src)
 	FileWrite(src, ' #include  "lib.aup" ;' . @ . '#import "lib.aup"' . @)
@@ -29,8 +18,7 @@ func import1()
 			'\R #include  "lib\.aup\.au3" ;\R' _
 			. '; PLYS #import "lib\.aup"\R$')
 
-
-func import2()
+func process_imports()
 	miscTokens = Split _
 			(' #include  "lib.aup"|#import "lib.aup"|#include "lib.aup"', _
 				"|", @NoCount)
@@ -40,15 +28,56 @@ func import2()
 	return _ArrayToString(miscTokens) == _
 			' #include  "lib.aup.au3"|#import "lib.aup"|#include "lib.aup.au3"'
 
-
-func then1()
-	mainText = "if True then _  ; xxx" . @ . @tab . "Echo(1)" . @
+func if_then_one()
+	mainText = "if True then Echo(1)"
 	_CloseBlocks(mainText)
-	return mainText == "if True then _  ; xxx" . @ . "    Echo(1)" . @
+	return mainText == _
+			"if True then Echo(1)"
 
-
-func then2()
+func if_then_block()
 	mainText = "if True then" . @ . @tab . "Echo(1)"
 	_CloseBlocks(mainText)
 	return mainText == _
 			"if True then" . @ . "    Echo(1)" . @ . "endif"
+
+func if_then_()
+	mainText = "if True then _  ; xxx" . @ . @tab . "Echo(1)" . @
+	_CloseBlocks(mainText)
+	return mainText == "if True then _  ; xxx" . @ . "    Echo(1)" . @
+
+func script_line_number()
+	return @ScriptLineNumber = 49
+
+func script_full_path()
+	return @ScriptFullPath = "c:\Users\Spray\Desktop\Plys\tests.aup"
+
+func script_name()
+	return @ScriptName == "tests.aup"
+
+func plys_path()
+	return @PlysPath = "c:\Program Files (x86)\AutoIt3\Plys\plys.aup.au3"
+
+func plys_version()
+	return @PlysVersion == "0.4.0"
+
+func path_part()
+	return PathPart("c:\dir\plys.aup.au3", "name") == "plys.aup"
+
+func lambda()
+	return {x, y: 2*x + @ScriptLineNumber}(3, 1) == 72
+
+; TODO: on changed dependence
+
+
+const funcs = [import, process_imports, if_then_one, if_then_block, if_then_, _
+		script_line_number, script_full_path, script_name, plys_path, _
+		plys_version, path_part, lambda]
+
+failed = 0
+for f in funcs
+	Echo(Lower(ReReplace(FuncName(f), "_TESTS_(\w+)", "\1")))
+	res = $f()
+	Echo((res? " +" : ": FAIL") . @)
+	if res = False then failed += 1
+Echo("total: " . UBound(funcs) . "; passed: " . (UBound(funcs) - failed) _
+		. "; failed: " . failed . @)

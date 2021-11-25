@@ -1,13 +1,11 @@
 const CONTINUATION = "ѣ#Ѵ‰Ѣ"
 
 const S_KEYWORDS = _
-    "ByRef|Const|ContinueCase|ContinueLoop|Default|Dim|" . _
-    "Do|Until|Enum|Exit|ExitLoop|False|For|To|Step|" . _
-    "In|Func|Return|Global|If|Then|ElseIf|Else|" . _
-    "Local|Null|ReDim|Select|Case|Static|" . _
-    "Switch|True|Volatile|With|While|" . _
-    "And|Or|Not|" . _
-    "Next|EndFunc|EndIf|EndSelect|EndSwitch|EndWith|WEnd"
+        "And|ByRef|Case|Const|ContinueCase|ContinueLoop|Default" _
+        . "|Dim|Do|Else|ElseIf|EndFunc|EndIf|EndSelect|EndSwitch|EndWith" _
+        . "|Enum|Exit|ExitLoop|False|For|Func|Global|If|In|Local|Next" _
+        . "|Not|Null|Or|ReDim|Return|Select|Static|Step|Switch|Then|To" _
+        . "|True|Until|Volatile|WEnd|While|With"
 const KEYWORDS = Split(S_KEYWORDS, "|")
 
 const S_FUNCTIONS = _
@@ -97,7 +95,7 @@ func TranslateExamples(byref dim txt)
     txt = ReReplace(txt, "\bfalse\b", "False")
 
     txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
-    txt = ReReplace(txt, "\$(\w+)", "$1")
+    txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
 
     txt = ReReplace(txt, "(?im)^(\s*)(global|local)\s+const(?=\s)", "$1const")
     txt = ReReplace(txt, "(?im)^(\s*)(global|local)(?=\s)", "$1dim")
@@ -110,7 +108,7 @@ func TranslateExamples(byref dim txt)
                 (funcDeclar, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
             if args = "" then continueloop
             args = Split(args, ",", @NoCount)
-            for arg in args        ; insert “dim”
+            for arg in args  ; insert “dim”
                 if not ReFind(arg, "\bconst\b") then
                     ReFind(arg, "[a-zA-Z]", @ReArray)
                     pos = @Extended - 2
@@ -134,7 +132,7 @@ func TranslateExamples(byref dim txt)
 func TranslateHtml(byref dim txt)
     txt = ReReplace(txt, "<h1>(\w+)</h1>", "<h1>$1 (_$1_)</h1>")
     txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
-    txt = ReReplace(txt, "\$(\w+)", "$1")
+    txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
     txt = ReReplace(txt, ">(\s*?)&amp;(=?\s*?)<", ">$1.$2<")
     txt = ReReplace(txt, _
         "(?im)^\s*#include\s+&lt;(StringConstants|Array)\.au3&gt;.*<br />\R", _
@@ -158,7 +156,7 @@ func TranslateFormattedCode(dim txt)
     txt = ReReplace(txt, "\bfalse\b", "False")
 
     txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
-    txt = ReReplace(txt, "\$(\w+)", "$1")
+    txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
 
     txt = ReReplace(txt, '(?i)(<span class="S0">(?:&nbsp; )*</span>)?' . _
         '<a .+?><span class="S5">(global|local)</span></a>' . _

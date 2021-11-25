@@ -3,8 +3,6 @@
 #include <FileConstants.au3>
 Opt("MustDeclareVars", 1)
 
-const Version = "0.4.0"
-
 const SilentMode = False
 const Au3exeDir = Replace(@AutoItExe, "AutoIt3.exe", "")
 const TemplateFilePath = @WindowsDir . "\ShellNew\Template.aup"
@@ -39,7 +37,7 @@ func Install()
     dim templFileData = Read(@WindowsDir . "\ShellNew\Template.au3")
     templFileData = Replace(templFileData, "AutoIt", "AutoIt Plys")
     templFileData = ReReplace(templFileData, _
-            "(AutoIt Plys Version:).*", "$1 " . Version)
+            "(AutoIt Plys Version:).*", "$1 " . @PlysVersion)
     templFileData = ReReplace(templFileData, _
             "(Author:\s+)(myName)", "$1     $2")
     FileDelete(TemplateFilePath)
