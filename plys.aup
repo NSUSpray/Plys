@@ -8,8 +8,8 @@ Opt("MustDeclareVars", 1)
 ; NOTE: rel_* - relative to InputFileDir, relrel_* - relative to rel_path
 
 const Version = "0.4.0"
-const PlysPathRegEx = _
-        __Re(PathPart(@AutoItExe, "drive", "dir") . "Plys\plys.aup.au3")
+const PlysPathRegEx = PrepareForRegEx _
+        (PathPart(@AutoItExe, "drive", "dir") . "Plys\plys.aup.au3")
 
 enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 
@@ -51,6 +51,7 @@ dim InputFileNameExt
 dim DepTable[1][1] = [[0]]
 
 ; Table of visibilities: which module sees names from which module
+; Only for replacement of not own names
 ; Based on DepTable
 dim ThruTable
 
@@ -271,7 +272,7 @@ func ProcessFiles()
             if _OldSource(sourcePath, targetPath) then continueloop
         elseif RunMode then
             Add(PathsToDeleteOnExit, targetPath)
-        isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
+        isPlysFile = _IsPlysFile(sourcePath)
         mainText = Read(sourcePath)
 
         if RunMode then _EnumerateLines(mainText, isPlysFile)
@@ -410,7 +411,7 @@ func _CloseBlocks(dim byref text)
                 for k = 1 to is
                     indent .= " "
                 if ReFind(text[i], "^" . indent . closer . "\b") then
-                    ; FIXME: must be replace even if disabled closeBlock
+                    ; TODO: should be replaced even if closeBlock is disabled 
                     text[i] = ReReplace(text[i], closer, closer . ";", 1)
                 else
                     text[i] = indent . closer . @ . text[i]
@@ -596,7 +597,7 @@ func __PreventReimporting(dim byref text, module)
         relrel_dep = DepTable[dep][0]
         if rel_dirSlash <> "" then
             relrel_dep = Replace(relrel_dep, rel_dirSlash, "")
-        relrel_dep = __Re(relrel_dep)
+        relrel_dep = PrepareForRegEx(relrel_dep)
         text = ReReplace(text, _
                 "(" . MiscTokenDelim . "\s*)" _
                 . '(\#(?:include|import)\s+[<"]' _
@@ -687,9 +688,9 @@ func _SubstituteMacros(dim byref text)
     text = ReReplace(text, "(?i)@PlysPath\b", '"' . PlysPathRegEx . '"')
     text = ReReplace(text, "(?i)@PlysVersion\b", '"' . Version . '"')
     text = ReReplace(text, "(?i)@ScriptFullPath\b", _
-            '"' . __Re(InputFilePath) . '"')
+            '"' . PrepareForRegEx(InputFilePath) . '"')
     text = ReReplace(text, "(?i)@ScriptName\b", _
-            '"' . __Re(InputFileNameExt) . '"')
+            '"' . PrepareForRegEx(InputFileNameExt) . '"')
 
 
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -832,6 +833,11 @@ func _FormatError(dim errorData)
 
 
 
+
+func PrepareForRegEx(str)
+    return ReReplace(str, "[\\\.\^\$\[\(\{\+\#]", "\\$0")
+
+
 func PathPart(path, dim start="path", dim finish="")
 ; Select subpath from start to finish part
 ; if start="path" then returns original path
@@ -858,5 +864,5 @@ func PathPart(path, dim start="path", dim finish="")
     return result
 
 
-func __Re(str)
-    return ReReplace(str, "[\\\.\^\$\[\(\{\+\#]", "\\$0")
+func _IsPlysFile(path)
+    return PathPart(path, "ext") = ".aup"

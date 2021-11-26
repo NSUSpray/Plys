@@ -68,7 +68,7 @@ func lambda()
 
 func make_lambda_lines()
 	dim lambdaContent = ["a"]
-	return __MakeLambdaLines(lambdaContent, "b", "  ; #1") == @ . @ _
+	return __MakeOrdinaryFunc(lambdaContent, "b", "  ; #1") == @ . @ _
 			. "func b()  ; #1" . @ _
 			. TabInSpaces . "return a  ; #1" . @ _
 			. "endfunc" . @
@@ -86,12 +86,31 @@ func process_lambdas()
 		. TabInSpaces . 'return  x \. "zxcv"' . LineNumCommentPrefix . '1\R' _
 		. "endfunc\R")
 
+func func_continuation()
+	src = @ScriptDir . '\func_.src.aup'
+	FileDelete(src)
+	FileWrite(src, "func a _" . @ _
+			. TabInSpaces . TabInSpaces . "(b, dim c)" . @ _
+			. TabInSpaces . "return b + c")
+	au3 = src . ".au3"
+	cmd = '"' . @AutoItExe . '" "' . plys . '" /Translate "' . src . '"'
+	RunWait(cmd)
+	FileDelete(src)
+	txt = Read(au3)
+	FileDelete(au3)
+	return ReFind(txt, _
+			"\Rfunc a _\R" _
+			. TabInSpaces . TabInSpaces . "\(const \$b, \$c\)\R" _
+			. TabInSpaces . "return \$b \+ \$c\R" _
+			. "endfunc$")
+
 ; TODO: on changed dependence
 
 
 const funcs = [import, process_imports, if_then_one, if_then_block, if_then_, _
 		script_line_number, script_full_path, script_name, plys_path, _
-		plys_version, path_part, lambda, make_lambda_lines, process_lambdas]
+		plys_version, path_part, lambda, make_lambda_lines, process_lambdas, _
+		func_continuation]
 
 failed = 0
 for f in funcs
