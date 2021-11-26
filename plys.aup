@@ -274,7 +274,7 @@ func ProcessFiles()
         isPlysFile = (PathPart(sourcePath, "ext") = ".aup")
         mainText = Read(sourcePath)
 
-        if RunMode then _EnumerateLines(mainText)
+        if RunMode then _EnumerateLines(mainText, isPlysFile)
         if isPlysFile and Synonyms and module = 1 then
             _AppendDefaultLibs(mainText)
         miscTokens = _SeparateMain(mainText)
@@ -309,11 +309,17 @@ func _OldSource(sourcePath, targetPath)
             and GetTime(sourcePath, 0, 1) < GetTime(targetPath, 0, 1)
 
 
-func _EnumerateLines(dim byref text)
+func _EnumerateLines(dim byref text, isPlysFile)
     text = Split(text, @, @EntireSplit + @NoCount)
+    dim misc
     for i = 0 to UBound(text) - 1
         if not ReFind(text[i], "^\s*$") then
             text[i] .= LineNumCommentPrefix . (i + 1)
+            if isPlysFile then
+                misc = _SeparateMain(text[i])
+                ; FIXME: must be substituted also in translate mode
+                text[i] = ReReplace(text[i], "(?i)@ScriptLineNumber\b", i + 1)
+                _CombineTokens(text[i], misc)
     text = _ArrayToString(text, @)
 
 
@@ -333,7 +339,7 @@ func _SeparateMain(dim byref txt)
         . "|'(?:[^']|'')*'" _
         . "|\s_\h*(?:;.*)?$" _
         . "|;.*" _
-        . "|{.*?}"
+        . "|\{|}"
     dim miscTokens = ReFind(txt, miscPattern, @ReArrayGlobal)
     if @error then
         dim miscTokens[0]
@@ -426,31 +432,63 @@ func _CloseBlocks(dim byref text)
 
 func _ProcessLambdas(dim byref mainText, dim byref miscTokens)
     dim names[UBound(miscTokens)]
-    dim n = 0, lambdas = ""
-    dim name, args, expr, lineNum
+    dim name, n = 0, lambdaLines = ""
+    dim mainDeleteRanges = "", miscDeleteRanges = ""
+    mainText = Split(mainText, MainTokenDelim, @NoCount)
+    ; example: a{b""c}d
+    ; i:a b j:c d – extr i+1..j:bc, del i+1..j+1:bcd, res a
+    ; i:{ "" j:} – extr i+1..j-1:"", del i..j:{""}, res empty
     for i = 0 to UBound(miscTokens) - 1
-        if not ReFind(miscTokens[i], "^\{.*}$") then continueloop
-        do
-            name = ""
-            for j = 1 to LambdaNameLen
-                name .= Chr(Random(Asc("a"), Asc("z"), 1))
-        until Search(names, name) = -1
-        names[n] = name
-        n += 1
-        args = ReFind(miscTokens[i], "(?:\{)([^:]*)", @ReArray)[0]
-        expr = ReFind(miscTokens[i], "(?::)([^}]+)", @ReArray)[0]
-        mainText = Split(mainText, MainTokenDelim, @NoCount)
-        mainText[i] .= name
-        mainText = _ArrayToString(mainText, MainTokenDelim)
-        miscTokens[i] = ""
-        lineNum = LineNumCommentPrefix . (i + 1)
-        lambdas .= @ . @ _
-                . "func " . name . "(" . args . ")" . lineNum . @ _
-                    . TabInSpaces . "return " . expr . lineNum . @ _
-                . "endfunc" . @
-    mainText .= lambdas
+        if miscTokens[i] <> "{" then continueloop
+        for j = i + 1 to UBound(miscTokens) - 1
+            if miscTokens[j] <> "}" then continueloop
+            name = __AppendNewName(names, n)
+            mainDeleteRanges .= (i + 1) . "-" . (j + 1) . ";"
+            lambdaLines .= __MakeOrdinaryFunc(Extract(mainText, i + 1, j), _
+                    name, __GetLineNum(miscTokens, j))
+            mainText[i] .= name . mainText[j + 1]
+            miscDeleteRanges .= i . "-" . j . ";"
+            Concat(miscTokens, Extract(miscTokens, i + 1, j - 1))
+            i = j + 1
+            exitloop
+    mainDeleteRanges = ReReplace(mainDeleteRanges, ";$", "")
+    miscDeleteRanges = ReReplace(miscDeleteRanges, ";$", "")
+    _ArrayDelete(mainText, mainDeleteRanges)
+    _ArrayDelete(miscTokens, miscDeleteRanges)
+    mainText = _ArrayToString(mainText, MainTokenDelim) . lambdaLines
     redim names[n]
     return names
+
+
+func __AppendNewName(dim byref names, dim byref n)
+    dim name
+    do
+        name = ""
+        for j = 1 to LambdaNameLen
+            name .= Chr(Random(Asc("a"), Asc("z"), 1))
+    until Search(names, name) = -1
+    names[n] = name
+    n += 1
+    return name
+
+
+func __GetLineNum(byref miscTokens, startIndex)
+    dim lineNum
+    for k = startIndex to UBound(miscTokens) - 1
+        lineNum = ReFind(miscTokens[k], "^; \#(\d+)$", @ReArray)
+        if IsArray(lineNum) then
+            return LineNumCommentPrefix . lineNum[0]
+    return ""
+
+
+func __MakeOrdinaryFunc(byref array, name, lineNum)
+    const text = _ArrayToString(array, MainTokenDelim)
+    const args = ReReplace(text, ":?[^:]*$", "")
+    const expr = ReFind(text, "[^:]*$", @ReArray)[0]
+    return @ . @ _
+            . "func " . name . "(" . args . ")" . lineNum . @ _
+                . TabInSpaces . "return " . expr . lineNum . @ _
+            . "endfunc" . @
 
 
 func _AddVarPrefixes(dim byref text, dim names)
@@ -558,7 +596,7 @@ func __PreventReimporting(dim byref text, module)
         relrel_dep = DepTable[dep][0]
         if rel_dirSlash <> "" then
             relrel_dep = Replace(relrel_dep, rel_dirSlash, "")
-        relrel_dep = ReReplace(relrel_dep, "[\\.^$[({+#]", "\\$0")
+        relrel_dep = __Re(relrel_dep)
         text = ReReplace(text, _
                 "(" . MiscTokenDelim . "\s*)" _
                 . '(\#(?:include|import)\s+[<"]' _
@@ -718,6 +756,7 @@ func _RenameSynonyms(dim byref text)
                 . "Unique" _
                 . ")\b", "_Array$1")
         ; text = ReReplace(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
+        ; TODO: ToHistogram → Histogram
         text = ReReplace(text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
         text = ReReplace(text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
         text = ReReplace(text, "(?i)\bConcat\b", "_ArrayConcatenate")
@@ -817,3 +856,7 @@ func PathPart(path, dim start="path", dim finish="")
     for i = start to finish
         result .= split_[i]
     return result
+
+
+func __Re(str)
+    return ReReplace(str, "[\\\.\^\$\[\(\{\+\#]", "\\$0")

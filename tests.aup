@@ -64,18 +64,38 @@ func path_part()
 	return PathPart("c:\dir\plys.aup.au3", "name") == "plys.aup"
 
 func lambda()
-	return {x, y: 2*x + @ScriptLineNumber}(3, 1) == 72
+	return {x, y: 2*x + @ScriptLineNumber}(3, 42) == 73
+
+func make_lambda_lines()
+	dim lambdaContent = ["a"]
+	return __MakeLambdaLines(lambdaContent, "b", "  ; #1") == @ . @ _
+			. "func b()  ; #1" . @ _
+			. TabInSpaces . "return a  ; #1" . @ _
+			. "endfunc" . @
+
+func process_lambdas()
+	mainText = 'a = {x: x . "zxcv"}' . LineNumCommentPrefix . "1" . @ _
+			. '$a("qwdf")' . LineNumCommentPrefix . "2"
+	miscTokens = _SeparateMain(mainText)
+	_ProcessLambdas(mainText, miscTokens)
+	_CombineTokens(mainText, miscTokens)
+	return ReFind(mainText, _
+		"a = ([a-z]{" . LambdaNameLen . "})" . LineNumCommentPrefix . "1\R" _
+		. '\$a\("qwdf"\)' . LineNumCommentPrefix . "2\R\R" _
+		. "func \1\(x\)" . LineNumCommentPrefix . "1\R" _
+		. TabInSpaces . 'return  x \. "zxcv"' . LineNumCommentPrefix . '1\R' _
+		. "endfunc\R")
 
 ; TODO: on changed dependence
 
 
 const funcs = [import, process_imports, if_then_one, if_then_block, if_then_, _
 		script_line_number, script_full_path, script_name, plys_path, _
-		plys_version, path_part, lambda]
+		plys_version, path_part, lambda, make_lambda_lines, process_lambdas]
 
 failed = 0
 for f in funcs
-	Echo(Lower(ReReplace(FuncName(f), "_TESTS_(\w+)", "\1")))
+	Echo(Lower(ReReplace(FuncName(f), "_TESTS__(\w+)", "\1")))
 	res = $f()
 	Echo((res? " +" : ": FAIL") . @)
 	if res = False then failed += 1
