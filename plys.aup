@@ -208,9 +208,9 @@ func _FindNames(byref text)
         dim newNames
         for varsDeclar in varsDeclars
             for varDeclar in Split(varsDeclar, ",", @NoCount)
-                ;newNames = ReFind _
-                ;       (varDeclar, "(\$\w*)", @ReArrayGlobal)
-                ;if IsArray(newNames) then Add(names, newNames[0])
+                ;~newNames = ReFind _
+                ;~       (varDeclar, "(\$\w*)", @ReArrayGlobal)
+                ;~if IsArray(newNames) then Add(names, newNames[0])
                 newNames = ReFind(varDeclar, _
                         "([\$A-Za-z_]\w*" . PublicSuffixRegEx . "?)", _
                         @ReArrayGlobal)
@@ -328,7 +328,7 @@ func _AppendDefaultLibs(dim byref text)
     text = ReReplace(text, "(?im)^(?!\#au)", _
             "#include <StringConstants.au3>" . @ _
             . "#include <Array.au3>" . @, 1); _
-            ; . "#include <Function.au3>" . @, 1)
+            ;~ . "#include <Function.au3>" . @, 1)
 
 
 func _SeparateMain(dim byref txt)
@@ -372,7 +372,7 @@ func _CloseBlocks(dim byref text)
         if ReFind(text[i], "(?i)^\s*(\#cs|\#comments-start)") then
             comments = True
             continueloop
-        ; if ReFind(text[i], "^\s*\#") then continueloop
+        ;~ if ReFind(text[i], "^\s*\#") then continueloop
         
         indentSize = Len(ReReplace(text[i], "^( *).*", "$1"))
         statement = ReReplace(text[i], "^ *(\w*).*", "$1")
@@ -383,8 +383,8 @@ func _CloseBlocks(dim byref text)
             if ReFind(text[then_i], "(?i)\bthen\h.*?\S") then  ; with then expr
                 statement = ""
         if indentSize < prevIndentSize then
-        ; func __CloseOpenedBlocks _
-        ;         (statement, indentSize, prevIndentSize, stack)
+        ;~ func __CloseOpenedBlocks _
+        ;~         (statement, indentSize, prevIndentSize, stack)
             sttmnt = statement
             for is = indentSize to prevIndentSize - 1
                 if is > UBound(stack) - 1 then exitloop
@@ -674,8 +674,8 @@ func _ReplaceNotOwnNames(dim byref text, module)
                     text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . varPrefix . name _
                             . "([^\w""'])", _
-                            "${1}" . varPrefix . "_" . prefix . "__" . name . "$2")  ;~ _
-                            ;~. "__" . suffix . "$2")
+                            "${1}" . varPrefix . "_" . prefix _
+                            . "__" . name . "$2")  ;~. "__" . suffix . "$2")
                 elseif isPublic then  ; ImportDep and isPublic
                     text = ReReplace(text, _
                             "(?im)([^\w""']|^)" . filename _
@@ -707,11 +707,11 @@ func _RenameSynonyms(dim byref text)
         text = ReReplace(text, "(?i)\bIsStruct\b", "IsDllStruct")
         ; File —————————————————————————————
         text = ReReplace(text, "(?i)\b(" _
-                . "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" _
-                . "GetEncoding|GetLongName|GetShortcut|GetShortName|GetSize|" _
-                . "GetTime|GetVersion|Open|OpenDialog|Read|ReadLine|" _
-                . "ReadToArray|Recycle|RecycleEmpty|SaveDialog|SelectFolder|" _
-                . "SetAttrib|SetEnd|SetPos|SetTime|Write|WriteLine" _
+                . "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib" _
+                . "|GetEncoding|GetLongName|GetShortcut|GetShortName|GetSize" _
+                . "|GetTime|GetVersion|Open|OpenDialog|Read|ReadLine" _
+                . "|ReadToArray|Recycle|RecycleEmpty|SaveDialog|SelectFolder" _
+                . "|SetAttrib|SetEnd|SetPos|SetTime|Write|WriteLine" _
                 . ")\b", "File$1")
         text = ReReplace(text, "(?i)\bCreateLink\b", "FileCreateNTFSLink")
         text = ReReplace(text, "(?i)\bFirstFile\b", "FileFindFirstFile")
@@ -719,28 +719,28 @@ func _RenameSynonyms(dim byref text)
         ; **Close|**Delete|**Exists|**GetPos|Install|**Move
         ; String ———————————————————————————
         text = ReReplace(text, "(?i)\b(" _
-                . "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" _
-                . "IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" _
-                . "Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" _
-                . "Upper" _
+                . "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit" _
+                . "|IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid" _
+                . "|Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight" _
+                . "|Upper" _
                 . ")\b", "String$1")
         text = ReReplace(text, "(?i)\bReFind\b", "StringRegExp")
         text = ReReplace(text, "(?i)\bReReplace\b", "StringRegExpReplace")
         ; Compare|FromASCIIArray|*IsFloat|*IsInt|**Reverse|ToASCIIArray
         ; Win ——————————————————————————————
         text = ReReplace(text, "(?i)\b(" _
-                . "Activate|Active|Flash|GetCaretPos|GetClassList|" _
-                . "GetClientSize|GetProcess|GetTitle|Kill|List|" _
-                . "MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" _
-                . "SetTitle|SetTrans|Wait|WaitActive|WaitClose|WaitNotActive" _
+                . "Activate|Active|Flash|GetCaretPos|GetClassList" _
+                . "|GetClientSize|GetProcess|GetTitle|Kill|List" _
+                . "|MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop" _
+                . "|SetTitle|SetTrans|Wait|WaitActive|WaitClose|WaitNotActive" _
                 . ")\b", "Win$1")
         ; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move
         ; |*SetState
         ; Macros ———————————————————————————
         text = ReReplace(text, "(?i)(@)(" _
-                . "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" _
-                . "StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" _
-                . "NoCount|EndNotStart|UTF16|UCS2" _
+                . "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading" _
+                . "|StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit" _
+                . "|NoCount|EndNotStart|UTF16|UCS2" _
                 . ")\b", "$Str_$2")
         text = ReReplace(text, "(?i)(@Re)(" _
                 . "Array|ArrayFull|ArrayGlobal|ArrayGlobalFull" _
@@ -751,14 +751,14 @@ func _RenameSynonyms(dim byref text)
         text = ReReplace(text, "@(\W)", "@CRLF$1")
         ; _Array ———————————————————————————
         text = ReReplace(text, "(?i)\b(" _
-                . "Add|ColDelete|ColInsert|Combinations|Display|Extract|" _
-                . "FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" _
-                . "Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" _
-                . "Unique" _
+                . "Add|ColDelete|ColInsert|Combinations|Display|Extract" _
+                . "|FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop" _
+                . "|Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim" _
+                . "|Unique" _
                 . ")\b", "_Array$1")
-        ; text = ReReplace(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
         ; TODO: ToHistogram → Histogram
         text = ReReplace(text, "(?i)\bToHistogram\b", "_Array1DToHistogram")
+        ;~ text = ReReplace(text, "(?i)\b(Filter|Map|Reduce)\b", "_Array$1")
         text = ReReplace(text, "(?i)\bBinSearch\b", "_ArrayBinarySearch")
         text = ReReplace(text, "(?i)\bConcat\b", "_ArrayConcatenate")
         ; **Delete|**Reverse|*ToString

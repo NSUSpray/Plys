@@ -9,92 +9,95 @@ const S_KEYWORDS = _
 const KEYWORDS = Split(S_KEYWORDS, "|")
 
 const S_FUNCTIONS = _
-    "Abs|ACos|AdlibRegister|AdlibUnRegister|Asc|AscW|ASin|Assign|ATan|AutoItSetOption|AutoItWinGetTitle|AutoItWinSetTitle|Beep|Binary|BinaryLen|BinaryMid|BinaryToString|BitAND|BitNOT|BitOR|BitRotate|BitShift|BitXOR|BlockInput|Break|Call|CDTray|Ceiling|Chr|ChrW|ClipGet|ClipPut|ConsoleRead|ConsoleWrite|ConsoleWriteError|ControlClick|ControlCommand|ControlDisable|ControlEnable|ControlFocus|ControlGetFocus|ControlGetHandle|ControlGetPos|ControlGetText|ControlHide|ControlListView|ControlMove|ControlSend|ControlSetText|ControlShow|ControlTreeView|Cos|Dec|DirCopy|DirCreate|DirGetSize|DirMove|DirRemove|DllCall|DllCallAddress|DllCallbackFree|DllCallbackGetPtr|DllCallbackRegister|DllClose|DllOpen|DllStructCreate|DllStructGetData|DllStructGetPtr|DllStructGetSize|DllStructSetData|DriveGetDrive|DriveGetFileSystem|DriveGetLabel|DriveGetSerial|DriveGetType|DriveMapAdd|DriveMapDel|DriveMapGet|DriveSetLabel|DriveSpaceFree|DriveSpaceTotal|DriveStatus|EnvGet|EnvSet|EnvUpdate|Eval|Execute|Exp|FileChangeDir|FileClose|FileCopy|FileCreateNTFSLink|FileCreateShortcut|FileDelete|FileExists|FileFindFirstFile|FileFindNextFile|FileFlush|FileGetAttrib|FileGetEncoding|FileGetLongName|FileGetPos|FileGetShortcut|FileGetShortName|FileGetSize|FileGetTime|FileGetVersion|FileInstall|FileMove|FileOpen|FileOpenDialog|FileRead|FileReadLine|FileReadToArray|FileRecycle|FileRecycleEmpty|FileSaveDialog|FileSelectFolder|FileSetAttrib|FileSetEnd|FileSetPos|FileSetTime|FileWrite|FileWriteLine|Floor|FtpSetProxy|FuncName|GUICreate|GUICtrlCreateAvi|GUICtrlCreateButton|GUICtrlCreateCheckbox|GUICtrlCreateCombo|GUICtrlCreateContextMenu|GUICtrlCreateDate|GUICtrlCreateDummy|GUICtrlCreateEdit|GUICtrlCreateGraphic|GUICtrlCreateGroup|GUICtrlCreateIcon|GUICtrlCreateInput|GUICtrlCreateLabel|GUICtrlCreateList|GUICtrlCreateListView|GUICtrlCreateListViewItem|GUICtrlCreateMenu|GUICtrlCreateMenuItem|GUICtrlCreateMonthCal|GUICtrlCreateObj|GUICtrlCreatePic|GUICtrlCreateProgress|GUICtrlCreateRadio|GUICtrlCreateSlider|GUICtrlCreateTab|GUICtrlCreateTabItem|GUICtrlCreateTreeView|GUICtrlCreateTreeViewItem|GUICtrlCreateUpdown|GUICtrlDelete|GUICtrlGetHandle|GUICtrlGetState|GUICtrlRead|GUICtrlRecvMsg|GUICtrlRegisterListViewSort|GUICtrlSendMsg|GUICtrlSendToDummy|GUICtrlSetBkColor|GUICtrlSetColor|GUICtrlSetCursor|GUICtrlSetData|GUICtrlSetDefBkColor|GUICtrlSetDefColor|GUICtrlSetFont|GUICtrlSetGraphic|GUICtrlSetImage|GUICtrlSetLimit|GUICtrlSetOnEvent|GUICtrlSetPos|GUICtrlSetResizing|GUICtrlSetState|GUICtrlSetStyle|GUICtrlSetTip|GUIDelete|GUIGetCursorInfo|GUIGetMsg|GUIGetStyle|GUIRegisterMsg|GUISetAccelerators|GUISetBkColor|GUISetCoord|GUISetCursor|GUISetFont|GUISetHelp|GUISetIcon|GUISetOnEvent|GUISetState|GUISetStyle|GUIStartGroup|GUISwitch|Hex|HotKeySet|HttpSetProxy|HttpSetUserAgent|HWnd|InetClose|InetGet|InetGetInfo|InetGetSize|InetRead|IniDelete|IniRead|IniReadSection|IniReadSectionNames|IniRenameSection|IniWrite|IniWriteSection|InputBox|Int|IsAdmin|IsArray|IsBinary|IsBool|IsDeclared|IsDllStruct|IsFloat|IsFunc|IsHWnd|IsInt|IsKeyword|IsNumber|IsObj|IsPtr|IsString|Log|MemGetStats|Misc Management|Mod|MouseClick|MouseClickDrag|MouseDown|MouseGetCursor|MouseGetPos|MouseMove|MouseUp|MouseWheel|MsgBox|Number|ObjCreate|ObjCreateInterface|ObjEvent|ObjGet|ObjName|OnAutoItExitRegister|OnAutoItExitUnRegister|Ping|PixelChecksum|PixelGetColor|PixelSearch|ProcessClose|ProcessExists|ProcessGetStats|ProcessList|ProcessSetPriority|ProcessWait|ProcessWaitClose|ProgressOff|ProgressOn|ProgressSet|Ptr|Random|RegDelete|RegEnumKey|RegEnumVal|RegRead|RegWrite|Round|Run|RunAs|RunAsWait|RunWait|Send|SendKeepActive|SetError|SetExtended|ShellExecute|ShellExecuteWait|Shutdown|Sin|Sleep|SoundPlay|SoundSetWaveVolume|SplashImageOn|SplashOff|SplashTextOn|Sqrt|SRandom|StatusbarGetText|StderrRead|StdinWrite|StdioClose|StdoutRead|String|StringAddCR|StringCompare|StringFormat|StringFromASCIIArray|StringInStr|StringIsAlNum|StringIsAlpha|StringIsASCII|StringIsDigit|StringIsFloat|StringIsInt|StringIsLower|StringIsSpace|StringIsUpper|StringIsXDigit|StringLeft|StringLen|StringLower|StringMid|StringRegExp|StringRegExpReplace|" . _
-        "StringReplace|StringReverse|StringRight|StringSplit|StringStripCR|StringStripWS|StringToASCIIArray|StringToBinary|StringTrimLeft|StringTrimRight|StringUpper|Tan|TCPAccept|TCPCloseSocket|TCPConnect|TCPListen|TCPNameToIP|TCPRecv|TCPSend|TCPShutdown|TCPStartup|TimerDiff|TimerInit|ToolTip|TrayCreateItem|TrayCreateMenu|TrayGetMsg|TrayItemDelete|TrayItemGetHandle|TrayItemGetState|TrayItemGetText|TrayItemSetOnEvent|TrayItemSetState|TrayItemSetText|TraySetClick|TraySetIcon|TraySetOnEvent|TraySetPauseIcon|TraySetState|TraySetToolTip|TrayTip|UBound|UDPBind|UDPCloseSocket|UDPOpen|UDPRecv|UDPSend|VarGetType|WinActivate|WinActive|WinClose|WinExists|WinFlash|WinGetCaretPos|WinGetClassList|WinGetClientSize|WinGetHandle|WinGetPos|WinGetProcess|WinGetState|WinGetText|WinGetTitle|WinKill|WinList|WinMenuSelectItem|WinMinimizeAll|WinMinimizeAllUndo|WinMove|WinSetOnTop|WinSetState|WinSetTitle|WinSetTrans|WinWait|WinWaitActive|WinWaitClose|WinWaitNotActive|" . _
-    "Add|BinSearch|ColDelete|ColInsert|Combinations|Concat|Display|Extract|FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|Push|Search|Shuffle|Sort|Swap|ToClip|ToHistogram|Transpose|Trim|Unique|ChangeDir|Copy|CreateLink|CreateShortcut|FirstFile|Flush|GetAttrib|GetEncoding|GetLongName|GetShortcut|GetShortName|GetSize|GetTime|GetVersion|NextFile|Open|Opendialog|Read|ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|WriteLine|Struct|StructGet|StructGetPtr|StructGetSize|StructSet|Echo|AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|ReFind|Replace|ReReplace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|Upper|Activate|Active|Flash|GetCaretPos|GetClassList|GetClientSize|GetProcess|GetTitle|Kill|List|MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|SetTitle|SetTrans|Wait|WaitActive|WaitClose|WaitNotActive"
+        "Abs|ACos|AdlibRegister|AdlibUnRegister|Asc|AscW|ASin|Assign|ATan|AutoItSetOption|AutoItWinGetTitle|AutoItWinSetTitle|Beep|Binary|BinaryLen|BinaryMid|BinaryToString|BitAND|BitNOT|BitOR|BitRotate|BitShift|BitXOR|BlockInput|Break|Call|CDTray|Ceiling|Chr|ChrW|ClipGet|ClipPut|ConsoleRead|ConsoleWrite|ConsoleWriteError|ControlClick|ControlCommand|ControlDisable|ControlEnable|ControlFocus|ControlGetFocus|ControlGetHandle|ControlGetPos|ControlGetText|ControlHide|ControlListView|ControlMove|ControlSend|ControlSetText|ControlShow|ControlTreeView|Cos|Dec|DirCopy|DirCreate|DirGetSize|DirMove|DirRemove|DllCall|DllCallAddress|DllCallbackFree|DllCallbackGetPtr|DllCallbackRegister|DllClose|DllOpen|DllStructCreate|DllStructGetData|DllStructGetPtr|DllStructGetSize|DllStructSetData|DriveGetDrive|DriveGetFileSystem|DriveGetLabel|DriveGetSerial|DriveGetType|DriveMapAdd|DriveMapDel|DriveMapGet|DriveSetLabel|DriveSpaceFree|DriveSpaceTotal|DriveStatus|EnvGet|EnvSet|EnvUpdate|Eval|Execute|Exp|FileChangeDir|FileClose|FileCopy|FileCreateNTFSLink|FileCreateShortcut|FileDelete|FileExists|FileFindFirstFile|FileFindNextFile|FileFlush|FileGetAttrib|FileGetEncoding|FileGetLongName|FileGetPos|FileGetShortcut|FileGetShortName|FileGetSize|FileGetTime|FileGetVersion|FileInstall|FileMove|FileOpen|FileOpenDialog|FileRead|FileReadLine|FileReadToArray|FileRecycle|FileRecycleEmpty|FileSaveDialog|FileSelectFolder|FileSetAttrib|FileSetEnd|FileSetPos|FileSetTime|FileWrite|FileWriteLine|Floor|FtpSetProxy|FuncName|GUICreate|GUICtrlCreateAvi|GUICtrlCreateButton|GUICtrlCreateCheckbox|GUICtrlCreateCombo|GUICtrlCreateContextMenu|GUICtrlCreateDate|GUICtrlCreateDummy|GUICtrlCreateEdit|GUICtrlCreateGraphic|GUICtrlCreateGroup|GUICtrlCreateIcon|GUICtrlCreateInput|GUICtrlCreateLabel|GUICtrlCreateList|GUICtrlCreateListView|GUICtrlCreateListViewItem|GUICtrlCreateMenu|GUICtrlCreateMenuItem|GUICtrlCreateMonthCal|GUICtrlCreateObj|GUICtrlCreatePic|GUICtrlCreateProgress|GUICtrlCreateRadio|GUICtrlCreateSlider|GUICtrlCreateTab|GUICtrlCreateTabItem|GUICtrlCreateTreeView|GUICtrlCreateTreeViewItem|GUICtrlCreateUpdown|GUICtrlDelete|GUICtrlGetHandle|GUICtrlGetState|GUICtrlRead|GUICtrlRecvMsg|GUICtrlRegisterListViewSort|GUICtrlSendMsg|GUICtrlSendToDummy|GUICtrlSetBkColor|GUICtrlSetColor|GUICtrlSetCursor|GUICtrlSetData|GUICtrlSetDefBkColor|GUICtrlSetDefColor|GUICtrlSetFont|GUICtrlSetGraphic|GUICtrlSetImage|GUICtrlSetLimit|GUICtrlSetOnEvent|GUICtrlSetPos|GUICtrlSetResizing|GUICtrlSetState|GUICtrlSetStyle|GUICtrlSetTip|GUIDelete|GUIGetCursorInfo|GUIGetMsg|GUIGetStyle|GUIRegisterMsg|GUISetAccelerators|GUISetBkColor|GUISetCoord|GUISetCursor|GUISetFont|GUISetHelp|GUISetIcon|GUISetOnEvent|GUISetState|GUISetStyle|GUIStartGroup|GUISwitch|Hex|HotKeySet|HttpSetProxy|HttpSetUserAgent|HWnd|InetClose|InetGet|InetGetInfo|InetGetSize|InetRead|IniDelete|IniRead|IniReadSection|IniReadSectionNames|IniRenameSection|IniWrite|IniWriteSection|InputBox|Int|IsAdmin|IsArray|IsBinary|IsBool|IsDeclared|IsDllStruct|IsFloat|IsFunc|IsHWnd|IsInt|IsKeyword|IsNumber|IsObj|IsPtr|IsString|Log|MemGetStats|Misc Management|Mod|MouseClick|MouseClickDrag|MouseDown|MouseGetCursor|MouseGetPos|MouseMove|MouseUp|MouseWheel|MsgBox|Number|ObjCreate|ObjCreateInterface|ObjEvent|ObjGet|ObjName|OnAutoItExitRegister|OnAutoItExitUnRegister|Ping|PixelChecksum|PixelGetColor|PixelSearch|ProcessClose|ProcessExists|ProcessGetStats|ProcessList|ProcessSetPriority|ProcessWait|ProcessWaitClose|ProgressOff|ProgressOn|ProgressSet|Ptr|Random|RegDelete|RegEnumKey|RegEnumVal|RegRead|RegWrite|Round|Run|RunAs|RunAsWait|RunWait|Send|SendKeepActive|SetError|SetExtended|ShellExecute|ShellExecuteWait|Shutdown|Sin|Sleep|SoundPlay|SoundSetWaveVolume|SplashImageOn|SplashOff|SplashTextOn|Sqrt|SRandom|StatusbarGetText|StderrRead|StdinWrite|StdioClose|StdoutRead|String|StringAddCR|StringCompare|StringFormat|StringFromASCIIArray|StringInStr|StringIsAlNum|StringIsAlpha|StringIsASCII|StringIsDigit|StringIsFloat|StringIsInt|StringIsLower|StringIsSpace|StringIsUpper|StringIsXDigit|StringLeft|StringLen|StringLower|StringMid|StringRegExp|StringRegExpReplace" _
+        . "|StringReplace|StringReverse|StringRight|StringSplit|StringStripCR|StringStripWS|StringToASCIIArray|StringToBinary|StringTrimLeft|StringTrimRight|StringUpper|Tan|TCPAccept|TCPCloseSocket|TCPConnect|TCPListen|TCPNameToIP|TCPRecv|TCPSend|TCPShutdown|TCPStartup|TimerDiff|TimerInit|ToolTip|TrayCreateItem|TrayCreateMenu|TrayGetMsg|TrayItemDelete|TrayItemGetHandle|TrayItemGetState|TrayItemGetText|TrayItemSetOnEvent|TrayItemSetState|TrayItemSetText|TraySetClick|TraySetIcon|TraySetOnEvent|TraySetPauseIcon|TraySetState|TraySetToolTip|TrayTip|UBound|UDPBind|UDPCloseSocket|UDPOpen|UDPRecv|UDPSend|VarGetType|WinActivate|WinActive|WinClose|WinExists|WinFlash|WinGetCaretPos|WinGetClassList|WinGetClientSize|WinGetHandle|WinGetPos|WinGetProcess|WinGetState|WinGetText|WinGetTitle|WinKill|WinList|WinMenuSelectItem|WinMinimizeAll|WinMinimizeAllUndo|WinMove|WinSetOnTop|WinSetState|WinSetTitle|WinSetTrans|WinWait|WinWaitActive|WinWaitClose|WinWaitNotActive" _
+        . "|Add|BinSearch|ColDelete|ColInsert|Combinations|Concat|Display|Extract|FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|Push|Search|Shuffle|Sort|Swap|ToClip|ToHistogram|Transpose|Trim|Unique|ChangeDir|Copy|CreateLink|CreateShortcut|FirstFile|Flush|GetAttrib|GetEncoding|GetLongName|GetShortcut|GetShortName|GetSize|GetTime|GetVersion|NextFile|Open|Opendialog|Read|ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|WriteLine|Struct|StructGet|StructGetPtr|StructGetSize|StructSet|Echo|AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|ReFind|Replace|ReReplace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|Upper|Activate|Active|Flash|GetCaretPos|GetClassList|GetClientSize|GetProcess|GetTitle|Kill|List|MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|SetTitle|SetTrans|Wait|WaitActive|WaitClose|WaitNotActive"
 const STR_CONSTANTS = Split( _
-    "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading|" . _
-    "StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit|" . _
-    "NoCount|EndNotStart|UTF16|UCS2", "|")
+        "NoCaseSense|CaseSense|NoCaseSenseBasic|StripLeading" _
+        . "|StripTrailing|StripSpaces|StripAll|ChrSplit|EntireSplit" _
+        . "|NoCount|EndNotStart|UTF16|UCS2", "|")
 
-const ARR_CONSTANTS = Split( _
-    "Array|ArrayFull|ArrayGlobal|ArrayGlobalFull", "|")
+const ARR_CONSTANTS = _
+        Split("Array|ArrayFull|ArrayGlobal|ArrayGlobalFull", "|")
 
 
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
 func _TranslateNames(byref dim txt)
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
     txt = ReReplace(txt, "(?i)\bConsoleWrite(?!\w|\.)", "Echo")
-    ; DllStruct −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    ; DllStruct ————————————————————————————
     txt = ReReplace(txt, "(?i)\bDllStructCreate(?!\w|\.)", "Struct")
     txt = ReReplace(txt, "(?i)\bDllStructGetData(?!\w|\.)", "StructGet")
     txt = ReReplace(txt, "(?i)\bDllStructGetSize(?!\w|\.)", "StructGetSize")
     txt = ReReplace(txt, "(?i)\bDllStructGetPtr(?!\w|\.)", "StructGetPtr")
     txt = ReReplace(txt, "(?i)\bDllStructSetData(?!\w|\.)", "StructSet")
     txt = ReReplace(txt, "(?i)\bIsDllStruct(?!\w|\.)", "IsStruct")
-    ; File −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    txt = ReReplace(txt, "(?i)\b(File)(" . _
-        "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib|" . _
-        "GetEncoding|GetLongName|GetShortcut|GetShortName|" . _
-        "GetSize|GetTime|GetVersion|Open|OpenDialog|Read|" . _
-        "ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog|" . _
-        "SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write|" . _
-        "WriteLine" . _
-        ")(?!\w|\.)", "$2")
+    ; File —————————————————————————————————
+    txt = ReReplace(txt, "(?i)\b(File)(" _
+            . "ChangeDir|Copy|CreateShortcut|Flush|GetAttrib" _
+            . "|GetEncoding|GetLongName|GetShortcut|GetShortName" _
+            . "|GetSize|GetTime|GetVersion|Open|OpenDialog|Read" _
+            . "|ReadLine|ReadToArray|Recycle|RecycleEmpty|SaveDialog" _
+            . "|SelectFolder|SetAttrib|SetEnd|SetPos|SetTime|Write" _
+            . "|WriteLine" _
+            . ")(?!\w|\.)", "$2")
     txt = ReReplace(txt, "(?i)\bFileCreateNTFSLink(?!\w|\.)", "CreateLink")
     txt = ReReplace(txt, "(?i)\bFileFindFirstFile(?!\w|\.)", "FirstFile")
     txt = ReReplace(txt, "(?i)\bFileFindNextFile(?!\w|\.)", "NextFile")
-    ; String −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    txt = ReReplace(txt, "(?i)\b(String)(" . _
-        "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit|" . _
-        "IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid|" . _
-        "Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight|" . _
-        "Upper" . _
-        ")(?!\w|\.)", "$2")
+    ; String ———————————————————————————————
+    txt = ReReplace(txt, "(?i)\b(String)(" _
+            . "AddCR|Format|InStr|IsAlNum|IsAlpha|IsASCII|IsDigit" _
+            . "|IsLower|IsSpace|IsUpper|IsXDigit|Left|Len|Lower|Mid" _
+            . "|Replace|Right|Split|StripCR|StripWS|TrimLeft|TrimRight" _
+            . "|Upper" _
+            . ")(?!\w|\.)", "$2")
     txt = ReReplace(txt, "(?i)\bStringRegExp(?!\w|\.)", "ReFind")
     txt = ReReplace(txt, "(?i)\bStringRegExpReplace(?!\w|\.)", "ReReplace")
-    ; Win −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    txt = ReReplace(txt, "(?i)\b(Win)(" . _
-        "Activate|Active|Flash|GetCaretPos|GetClassList|" . _
-        "GetClientSize|GetProcess|GetTitle|Kill|List|" . _
-        "MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop|" . _
-        "SetTitle|SetTrans|Wait|WaitActive|WaitClose|" . _
-        "WaitNotActive" . _
-        ")(?!\w|\.)", "$2")
-    ; Macros −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+    ; Win ——————————————————————————————————
+    txt = ReReplace(txt, "(?i)\b(Win)(" _
+            . "Activate|Active|Flash|GetCaretPos|GetClassList" _
+            . "|GetClientSize|GetProcess|GetTitle|Kill|List" _
+            . "|MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop" _
+            . "|SetTitle|SetTrans|Wait|WaitActive|WaitClose" _
+            . "|WaitNotActive" _
+            . ")(?!\w|\.)", "$2")
+    ; Macros ———————————————————————————————
     for constant in STR_CONSTANTS
-        txt = ReReplace(txt, "(?i)\bStr_" . constant . "(?!\w|\.)", "@" . constant)
+        txt = ReReplace _
+                (txt, "(?i)\bStr_" . constant . "(?!\w|\.)", "@" . constant)
     for constant in ARR_CONSTANTS
-        txt = ReReplace(txt, "(?i)\bStr_RegExp" . constant . "Match(?!\w|\.)", _
-            "@Re" . constant)
+        txt = ReReplace _
+                (txt, "(?i)\bStr_RegExp" . constant . "Match(?!\w|\.)", _
+                    "@Re" . constant)
     txt = ReReplace(txt, "(?i)STR_REGEXPMATCH(?!\w|\.)", "@ReMatch")
     txt = ReReplace(txt, '(?i)\bWinGetHandle\("\[ACTIVE\]"\)', "@ActiveWin")
     txt = ReReplace(txt, "(?i)\$CmdLine(?!\w|\.)", "@CmdLine")
     txt = ReReplace(txt, "(?i)@CRLF(?!\w|\.)", "@")
-    ; _Array −−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
-    txt = ReReplace(txt, "(?i)\b(_Array)(" . _
-        "Add|ColDelete|ColInsert|Combinations|Display|Extract|" . _
-        "FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop|" . _
-        "Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim|" . _
-        "Unique" . _
-        ")(?!\w|\.)", "$2")
+    ; _Array ———————————————————————————————
+    txt = ReReplace(txt, "(?i)\b(_Array)(" _
+            . "Add|ColDelete|ColInsert|Combinations|Display|Extract" _
+            . "|FindAll|Insert|Max|MaxIndex|Min|MinIndex|Permute|Pop" _
+            . "|Push|Search|Shuffle|Sort|Swap|ToClip|Transpose|Trim" _
+            . "|Unique" _
+            . ")(?!\w|\.)", "$2")
     txt = ReReplace(txt, "(?i)\b_Array1DToHistogram(?!\w|\.)", "ToHistogram")
     txt = ReReplace(txt, "(?i)\b_ArrayBinarySearch(?!\w|\.)", "BinSearch")
     txt = ReReplace(txt, "(?i)\b_ArrayConcatenate(?!\w|\.)", "Concat")
 
 
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
 func TranslateExamples(byref dim txt)
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
     txt = ReReplace(txt, "\b_\R", CONTINUATION)
     txt = ReReplace(txt, _
-        "(?ims)^\s*(end(if|select|switch|with|func)|next|wend).*?\R", "")
+            "(?ims)^\s*(end(if|select|switch|with|func)|next|wend).*?\R", "")
     for keyword in KEYWORDS
         txt = ReReplace(txt, "\b" . keyword . "\b", Lower(keyword))
     txt = ReReplace(txt, "\btrue\b", "True")
     txt = ReReplace(txt, "\bfalse\b", "False")
 
-    txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
+    txt = ReReplace _
+            (txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
     txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
 
     txt = ReReplace(txt, "(?im)^(\s*)(global|local)\s+const(?=\s)", "$1const")
@@ -105,24 +108,23 @@ func TranslateExamples(byref dim txt)
         for funcDeclar in funcDeclars
             newFuncDeclar = funcDeclar
             args = ReReplace _
-                (funcDeclar, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
+                    (funcDeclar, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
             if args = "" then continueloop
             args = Split(args, ",", @NoCount)
             for arg in args  ; insert “dim”
                 if not ReFind(arg, "\bconst\b") then
-                    ReFind(arg, "[a-zA-Z]", @ReArray)
-                    pos = @Extended - 2
+                    ReFind(arg, "[a-zA-Z_]", @ReArray)
+                    pos = @extended - 2
                     newFuncDeclar = Replace(newFuncDeclar, arg, _
-                        Left(arg, pos) . "dim " . Mid(arg, pos + 1))
-            ; delete “const”
-            newFuncDeclar = ReReplace(newFuncDeclar, "\bconst\s+", "")
+                            Left(arg, pos) . "dim " . Mid(arg, pos + 1))
+            newFuncDeclar = ReReplace _
+                    (newFuncDeclar, "\bconst\s+", "")  ; delete “const”
             txt = Replace(txt, funcDeclar, newFuncDeclar)
 
     txt = ReReplace(txt, "(\s)&(\s)", "$1.$2")
     txt = ReReplace(txt, "&=", ".=")
-    txt = ReReplace(txt, _
-        "(?im)^\s*#include\s+<(StringConstants|Array)\.au3>.*\R", _
-        "")
+    txt = ReReplace _
+            (txt, "(?im)^\s*#include\s+<(StringConstants|Array)\.au3>.*\R", "")
     txt = ReReplace(txt, "(?s)^(?>\R)+", "")
     txt = Replace(txt, CONTINUATION, "_" . @)
 
@@ -131,76 +133,82 @@ func TranslateExamples(byref dim txt)
 
 func TranslateHtml(byref dim txt)
     txt = ReReplace(txt, "<h1>(\w+)</h1>", "<h1>$1 (_$1_)</h1>")
-    txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
+    txt = ReReplace _
+            (txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
     txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
     txt = ReReplace(txt, ">(\s*?)&amp;(=?\s*?)<", ">$1.$2<")
     txt = ReReplace(txt, _
-        "(?im)^\s*#include\s+&lt;(StringConstants|Array)\.au3&gt;.*<br />\R", _
-        "")
+            "(?im)^\s*#include\s+&lt;(StringConstants|Array)\.au3&gt;" _
+            . ".*<br />\R", "")
     txt = ReReplace(txt, "(?s)^(?><br />\R)+", "")
     _TranslateNames(txt)
     txt = ReReplace(txt, "(<h1>\w+ \()_(\w+)_(\)</h1>)", "$1$2$3")
     txt = ReReplace(txt, "<h1>(\w+) \(\1\)</h1>", "<h1>$1</h1>")
 
 
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
 func TranslateFormattedCode(dim txt)
-;−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−−
+;··············································································
     txt = ReReplace(txt, '<span class="S8">_</span>\R', CONTINUATION)
-    txt = ReReplace(txt, '(?i)(<span class="S0">(&nbsp; )*</span>)?' . _
-        '<a [^>]+?><span class="S5">' . _
-        '(end(if|select|switch|with|func)|next|wend)</span></a>(.*?\R)?', "")
+    txt = ReReplace(txt, '(?i)(<span class="S0">(&nbsp; )*</span>)?' _
+            . '<a [^>]+?><span class="S5">' _
+            . '(end(if|select|switch|with|func)|next|wend)</span></a>' _
+            . '(.*?\R)?', "")
     for keyword in KEYWORDS
         txt = ReReplace(txt, "\b" . keyword . "\b", Lower(keyword))
     txt = ReReplace(txt, "\btrue\b", "True")
     txt = ReReplace(txt, "\bfalse\b", "False")
 
-    txt = ReReplace(txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
+    txt = ReReplace _
+            (txt, "(?i)\$(" . S_KEYWORDS . "|" . S_FUNCTIONS . ")\b", "$$$1")
     txt = ReReplace(txt, "\$([a-zA-Z_]\w*)", "$1")
 
-    txt = ReReplace(txt, '(?i)(<span class="S0">(?:&nbsp; )*</span>)?' . _
-        '<a .+?><span class="S5">(global|local)</span></a>' . _
-        '<span class="S0"> </span>(<a .+?><span class="S5">const</span></a>)' . _
-        '(?=<span class="S0"> </span>)', "$1$3")
+    txt = ReReplace(txt, '(?i)(<span class="S0">(?:&nbsp; )*</span>)?' _
+            . '<a .+?><span class="S5">(global|local)</span></a>' _
+            . '<span class="S0"> </span>' _
+            . '(<a .+?><span class="S5">const</span></a>)' _
+            . '(?=<span class="S0"> </span>)', "$1$3")
     txt = ReReplace(txt, _
-        '(?i)(<span class="S0">(?:&nbsp; )*</span>)?' . _
-        '(<a .+?><span class="S5">)(global|local)(</span></a>)' . _
-        '(?=<span class="S0"> </span>)', "$1$2dim$4")
-    const funcDeclars = ReFind(txt, '(?im)<a .+?>' . _
-        '<span class="S5">func</span></a>.*$', @ReArrayGlobal)
+            '(?i)(<span class="S0">(?:&nbsp; )*</span>)?' _
+            . '(<a .+?><span class="S5">)(global|local)(</span></a>)' _
+            . '(?=<span class="S0"> </span>)', "$1$2dim$4")
+    const funcDeclars = ReFind(txt, '(?im)<a .+?>' _
+            . '<span class="S5">func</span></a>.*$', @ReArrayGlobal)
     if IsArray(funcDeclars) then
         dim newFuncDeclar, args, pos
         for funcDeclar in funcDeclars
             newFuncDeclar = funcDeclar
-            args = ReReplace(funcDeclar, '(?i)<a .+?>' . _
-                '<span class="S5">func</span></a>' . _
-                '<span class="S0"> .*?</span><span class="S8">\((?:</span>' . _
-                '(.*)<span class="S8">)?\)</span>.*', "$1")
+            args = ReReplace(funcDeclar, '(?i)<a .+?>' _
+                    . '<span class="S5">func</span></a>' _
+                    . '<span class="S0"> .*?</span><span class="S8">\(' _
+                    . '(?:</span>(.*)<span class="S8">)?\)</span>.*', "$1")
             if args = "" then continueloop
             args = Split(args, '<span class="S8">,</span>', _
-                @NoCount + @EntireSplit)
-            for arg in args        ; insert “dim”
+                    @NoCount + @EntireSplit)
+            for arg in args  ; insert “dim”
                 if not ReFind(arg, '<span class="S5">const</span>') then
                     ReFind(arg, '<span class="S9">', @ReArray)
                     pos = @Extended - 18
                     newFuncDeclar = Replace(newFuncDeclar, arg, _
-                        Left(arg, pos) . _
-                        '<a class="codeSnippetLink" href="\.\./keywords/Dim\.htm">' . _
-                        '<span class="S5">dim</span></a><span class="S0"> </span>' . _
-                        Mid(arg, pos + 1))
+                            Left(arg, pos) _
+                            . '<a class="codeSnippetLink" ' _
+                            . 'href="\.\./keywords/Dim\.htm">' _
+                            . '<span class="S5">dim</span></a>' _
+                            . '<span class="S0"> </span>' _
+                            . Mid(arg, pos + 1))
             newFuncDeclar = ReReplace(newFuncDeclar, _
-                '<a .+?><span class="S5">const</span></a>' . _
-                '<span class="S0"> </span>', "")  ; delete “const”
+                    '<a .+?><span class="S5">const</span></a>' _
+                    . '<span class="S0"> </span>', "")  ; delete “const”
             txt = Replace(txt, funcDeclar, newFuncDeclar)
 
     txt = ReReplace(txt, '(<span class="S8">)&amp;(</span>)', "$1.$2")
     txt = ReReplace(txt, '(<span class="S8">)&amp;=(</span>)', "$1.=$2")
     txt = ReReplace(txt, _
-        '(?i)<a .+?><span class="S11">#include</span></a>' . _
-        '<span class="S0"> </span>' . _
-        '<span class="S7">&lt;' . _
-        "(StringConstants|Array)\.au3" . _
-        "&gt;</span>.*\R", "")
+            '(?i)<a .+?><span class="S11">#include</span></a>' _
+            . '<span class="S0"> </span>' _
+            . '<span class="S7">&lt;' _
+            . "(StringConstants|Array)\.au3" _
+            . "&gt;</span>.*\R", "")
 
     txt = Replace(txt, CONTINUATION, '<span class="S8">_</span>' . @)
     return txt
