@@ -1,5 +1,4 @@
 #include "plys.aup"
-#plys lambda
 Opt("MustDeclareVars", 0)
 
 plys = ReReplace(@AutoItExe, "AutoIt3\.exe$", "", 1) . "Plys\plys.aup.au3"
@@ -46,7 +45,7 @@ func if_then_()
 	return mainText == "if True then _  ; xxx" . @ . "    Echo(1)" . @
 
 func script_line_number()
-	return @ScriptLineNumber = 49
+	return @ScriptLineNumber = 48
 
 func script_full_path()
 	return @ScriptFullPath = "c:\Users\Spray\Desktop\Plys\tests.aup"
@@ -64,7 +63,7 @@ func path_part()
 	return PathPart("c:\dir\plys.aup.au3", "name") == "plys.aup"
 
 func lambda()
-	return {x, y: 2*x + @ScriptLineNumber}(3, 42) == 73
+	return {x, y: 2*x + @ScriptLineNumber}(3, 42) == 72
 
 func make_lambda_lines()
 	dim lambdaContent = ["a"]

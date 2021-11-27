@@ -150,7 +150,7 @@ mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” sco
 
 
 1. Download and unpack archive from [latest release](https://github.com/NSUSpray/Plys/releases/latest).
-1. Double click the “setup.au3” file and follow to setup instructions.
+1. Double click the “setup.aup.au3” file and follow to setup instructions.
 
 
 ## First steps
@@ -173,7 +173,7 @@ mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” sco
 
 ## Extra options
 
-You can use extra options by typing in the script one of this:
+You can use extra options for each file by typing in the script one of this:
 
 ```autoit
 #plys dollarprefix  ; refuse to use variables without “$” prefix
@@ -181,13 +181,7 @@ You can use extra options by typing in the script one of this:
 #plys noindent  ; ignore indentation but obligue to use “endif/wend/etc”.
 #plys noimport  ; refuse the import operator
 #plys nosynonyms  ; refuse the function and macro synonyms
-#plys lambda  ; enable anonymous functions (beta)
-```
-
-Also you can turn off data exchange through standard input/output streams, then the shell process will not hang in memory, but then you will not be able to observe the output of your program in the output window of your development environment. You can do this by adding a line to the main file of your program
-
-```autoit
-#plys nostdio
+#plys nolambda  ; refuse the anonymous functions
 ```
 
 
@@ -195,11 +189,13 @@ Also you can turn off data exchange through standard input/output streams, then 
 
 After installation Plys already integrated to Windows shell. If you want to run a script by command line use
 
-```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Rapid] [/ErrorStdOut] <script path> [<arguments>]```
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Rapid] [/ErrorStdOut] [/NoStdio] <script path> [<arguments>]```
 
-`/Rapid` means that if source files have not be modified since the previous run, they will not be re-translated. This option speeds up startup.
+`/Rapid` means that if source files have not be modified since the previous run, they will not be re-translated. This option speeds up script execution startup.
 
 The `/ErrorStdOut` switch allows the redirection of a fatal error to StdOut which can then be captured by an application.
+
+Also you can turn off data exchange through standard input/output streams, then the shell process will not hang in memory, but then you will not be able to observe the output of your program in the output window of your development environment. You can do this by adding the `/NoStdio` option.
 
 If you want to translate a script to pure AutoIt code use
 
@@ -212,7 +208,7 @@ You can compile the script, specifying to the compiler the translating file *\*.
 
 ## How it works
 
-The *setup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (as Plys\plys.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
+The *plys.aup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (Program Files\AutoIt3\Plys\plys.aup.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
 
 
 ## Future

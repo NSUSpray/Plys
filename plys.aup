@@ -12,6 +12,8 @@ const PlysPathRegEx = PrepareForRegEx _
         (PathPart(@AutoItExe, "drive", "dir") . "Plys\plys.aup.au3")
 
 enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
+enum LambdaFunctionsKey, NoDollarPrefixKey, ConstByDefaultKey, _
+        CloseBlockByIndentKey, ImportKeywordKey, SynonymsKey
 
 ; Translation settings
 const MainTokenDelim = Chr(0x0C)  ; form feed
@@ -24,16 +26,15 @@ const NewSuffixLen = 2
 const NameDelimRegEx = ":"
 
 ; Default Plys-file settings
-; TODO: individual for each Plys-file
-dim LambdaFunctions = False
-dim NoDollarPrefix = True
-dim ConstByDefault = True
-dim CloseBlockByIndent = True
-dim ImportKeyword = True
-dim Synonyms = True
+const LambdaFunctionsDefault = True
+const NoDollarPrefixDefault = True
+const ConstByDefaultDefault = True  ; dim instead of local/global, func args
+const CloseBlockByIndentDefault = True
+const ImportKeywordDefault = True
+const SynonymsDefault = True
 
 ; Translator options
-dim StdioExchange = True  ; TODO: move this switch to commandline
+dim StdioExchange = True
 dim RunMode = True
 dim ErrorStdOut = False
 dim RapidMode = False
@@ -55,6 +56,8 @@ dim DepTable[1][1] = [[0]]
 ; Based on DepTable
 dim ThruTable
 
+dim PlysOpts = [0]  ; Plys-file settings for each file
+
 dim PathsToDeleteOnExit[0]
 
 
@@ -63,7 +66,6 @@ if @ScriptName == "plys.aup" then Main()
 
 func Main*()
     const scriptArgs = ProcessCmdLine()
-    GetProjectSettings()
 
     TraySetIcon("stop")
     TraySetState(TRAY_ICONSTATE_FLASH)
@@ -72,12 +74,12 @@ func Main*()
     GetDeps(DepTable, rel_path)
     if not RunMode then Echo("[Dependencies are get]" . @)
 
-    if ImportKeyword then MakeThruTable()
+    MakeThruTable()  ;~if ImportKeyword then MakeThruTable()
 
     ProcessFiles()
 
     DepTable = 0
-    if ImportKeyword then ThruTable = 0
+    ThruTable = 0  ;~if ImportKeyword then ThruTable = 0
 
     if RunMode then
         const pid = Run('"' . @AutoItExe _
@@ -118,6 +120,8 @@ func _GetPathIndex()
         switch @CmdLine[i]
             case "/Translate"
                 RunMode = False
+            case "/NoStdio"
+                StdioExchange = False
             case "/ErrorStdOut"
                 ErrorStdOut = True
             case "/Rapid"
@@ -125,58 +129,18 @@ func _GetPathIndex()
     return i
 
 
-func GetProjectSettings()
-    const text = Read(InputFilePath)
-    StdioExchange = StdioExchange _
-            and not ReFind(text, "(?m)^\#plys nostdio")
-    LambdaFunctions = LambdaFunctions _
-            or ReFind(text, "(?m)^\#plys lambda")
-    NoDollarPrefix = NoDollarPrefix _
-            and not ReFind(text, "(?m)^\#plys dollarprefix")
-    ConstByDefault = ConstByDefault _
-            and not ReFind(text, "(?m)^\#plys noconst")
-    CloseBlockByIndent = CloseBlockByIndent _
-            and not ReFind(text, "(?m)^\#plys noindent")
-    ImportKeyword = ImportKeyword _
-            and not ReFind(text, "(?m)^\#plys noimport")
-    Synonyms = Synonyms _
-            and not ReFind(text, "(?m)^\#plys nosynonyms")
-
-
-;··············································································
 func GetDeps(dim byref DepTable, rel_path)
-; Search all #include and #import paths in rel_path file, add module numbers
-; into DepTable and recursively process this dependencies.
-;··············································································
-    dim text = Read(InputFileDir . "\" . rel_path)
-
-    ; append and init new module cells
-    const module = DepTable[0][0] + 1
-    redim DepTable[module + 1][module + 1]
-    DepTable[0][0] = module
-    DepTable[module][0] = rel_path
-    DepTable[0][module] = _FindNames(text)
-    
-    const relrel_includes = _
-            ReFind(text, '(?m)^\s*\#include\s+"(.+?)"', @ReArrayGlobal)
-    const importEnabled = _
-            ImportKeyword and PathPart(rel_path, "ext") = ".aup"
-    if importEnabled then
-        const relrel_imports = _
-                ReFind(text, '(?m)^\s*\#import\s+"(.+?)"', @ReArrayGlobal)
-    text = ""
+; fill DepTable with dependencies recursively
     const depTypes = [IncludeDep, ImportDep]
     dim relrel_deps, rel_dep, dep
+    dim relrel_includes, relrel_imports
+    ; Attention! _GetDepsFirstStageData increments the DepTable[0][0]
+    _GetDepsFirstStageData(rel_path, relrel_includes, relrel_imports)
     const rel_dirSlash = PathPart(rel_path, "dir")  ; current_file\directory\
+    const module = DepTable[0][0]
     for depType in depTypes
-        if depType = IncludeDep then
-            relrel_deps = relrel_includes
-        elseif importEnabled then
-            relrel_deps = relrel_imports
-        else
-            continueloop
+        relrel_deps = (depType=IncludeDep)? relrel_includes : relrel_imports
         if not IsArray(relrel_deps) then continueloop
-        
         for relrel_dep in relrel_deps
             rel_dep = rel_dirSlash . relrel_dep
             dep = Search(DepTable, rel_dep, 1, default, _
@@ -186,18 +150,59 @@ func GetDeps(dim byref DepTable, rel_path)
                 dep = Search(DepTable, rel_dep, 1, default, _
                         default, default, default, 0)  ; from 1st elem in col 0
             DepTable[module][dep] = depType
-        
-    next depType
 
 
-func _FindNames(byref text)
+;··············································································
+func _GetDepsFirstStageData _
+        (rel_path, dim byref relrel_includes, dim byref relrel_imports)
+; Append and init new module DepTable cells: path, names, Plys-options.
+; Return arrays with include and import paths.
+;··············································································
+    dim mainText = Read(InputFileDir . "\" . rel_path)
+    const miscText = MiscTokenDelim _
+            . _ArrayToString(_SeparateMain(mainText), MiscTokenDelim)
+
+    const module = DepTable[0][0] + 1
+
+    redim PlysOpts[module + 1]
+    PlysOpts[0] = module
+    dim opts[SynonymsKey + 1]
+    opts[LambdaFunctionsKey] = LambdaFunctionsDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+nolambda")
+    opts[NoDollarPrefixKey] = NoDollarPrefixDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+dollarprefix")
+    opts[ConstByDefaultKey] = ConstByDefaultDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+noconst")
+    opts[CloseBlockByIndentKey] = CloseBlockByIndentDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+noindent")
+    opts[ImportKeywordKey] = ImportKeywordDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+noimport")
+    opts[SynonymsKey] = SynonymsDefault _
+        and not ReFind(miscText, MiscTokenDelim . "\s*\#plys\s+nosynonyms")
+    PlysOpts[module] = opts
+
+    redim DepTable[module + 1][module + 1]
+    DepTable[0][0] = module
+    DepTable[module][0] = rel_path
+    DepTable[0][module] = _FindNames(mainText, opts[ConstByDefaultKey])
+
+    relrel_includes = ReFind(miscText, _
+            MiscTokenDelim . '\s*\#include\s+"(.+?)"', _
+            @ReArrayGlobal)
+    if opts[ImportKeywordKey] and _IsPlysFile(rel_path) then
+        relrel_imports = ReFind(miscText, _
+                MiscTokenDelim . '\s*\#import\s+"(.+?)"', _
+                @ReArrayGlobal)
+
+
+func _FindNames(byref text, constByDefault)
     dim names = ReFind(text, _
             "(?im)^\s*func\s+([A-Za-z_]\w*" . PublicSuffixRegEx . "?)", _
             @ReArrayGlobal)
     if not IsArray(names) then
         dim names[0]
     dim varsDeclars
-    if ConstByDefault then
+    if constByDefault then
         varsDeclars = ReFind(text, _
                 "(?im)^(?:\s*global\s+)?(?:dim|const|enum)\s+(.*)", _
                 @ReArrayGlobal)
@@ -263,6 +268,7 @@ func ProcessFiles()
 ;··············································································
     dim sourcePath, targetPath, isPlysFile
     dim mainText, miscTokens  ; storages for processing file data
+    dim opts
 
     for module = 1 to DepTable[0][0]
         sourcePath = InputFileDir . "\" . DepTable[module][0]
@@ -275,24 +281,25 @@ func ProcessFiles()
         isPlysFile = _IsPlysFile(sourcePath)
         mainText = Read(sourcePath)
 
-        if RunMode then _EnumerateLines(mainText, isPlysFile)
-        if isPlysFile and Synonyms and module = 1 then
+        _EnumerateLines(mainText, isPlysFile)
+        opts = PlysOpts[module]
+        if isPlysFile and opts[SynonymsKey] and module = 1 then
             _AppendDefaultLibs(mainText)
         miscTokens = _SeparateMain(mainText)
         if isPlysFile then
-            if CloseBlockByIndent then _CloseBlocks(mainText)
-            if LambdaFunctions then
+            if opts[CloseBlockByIndentKey] then _CloseBlocks(mainText)
+            if opts[LambdaFunctionsKey] then
                 Add(DepTable[0][module], _ProcessLambdas(mainText, miscTokens))
-            if NoDollarPrefix then
+            if opts[NoDollarPrefixKey] then
                 _AddVarPrefixes(mainText, DepTable[0][module])
-            _RemoveAsterisks(mainText)
-            if ConstByDefault then _ToggleDimConst(mainText)
-        if ImportKeyword then
+            _RemoveAsterisks(mainText, opts[ConstByDefaultKey])
+            if opts[ConstByDefaultKey] then _ToggleDimConst(mainText)
+        if opts[ImportKeywordKey] then
             _ProcessImports(miscTokens, module, isPlysFile)
             if DepTable[0][0] > 1 then _ReplaceOwnNames(mainText, module)
             _ReplaceNotOwnNames(mainText, module)
         _SubstituteMacros(mainText)
-        if isPlysFile and Synonyms then
+        if isPlysFile and opts[SynonymsKey] then
             _RenameSynonyms(mainText)
         _CombineTokens(mainText, miscTokens)
 
@@ -315,10 +322,10 @@ func _EnumerateLines(dim byref text, isPlysFile)
     dim misc
     for i = 0 to UBound(text) - 1
         if not ReFind(text[i], "^\s*$") then
-            text[i] .= LineNumCommentPrefix . (i + 1)
+            if RunMode then
+                text[i] .= LineNumCommentPrefix . (i + 1)
             if isPlysFile then
                 misc = _SeparateMain(text[i])
-                ; FIXME: must be substituted also in translate mode
                 text[i] = ReReplace(text[i], "(?i)@ScriptLineNumber\b", i + 1)
                 _CombineTokens(text[i], misc)
     text = _ArrayToString(text, @)
@@ -338,7 +345,7 @@ func _SeparateMain(dim byref txt)
         . "|^\s*\#.*" _
         . '|"(?:[^"]|"")*"' _
         . "|'(?:[^']|'')*'" _
-        . "|\s_\h*(?:;.*)?$" _
+        . "|\s_\h*(?:;.*)?\R" _  ; \R needs for continuation in func
         . "|;.*" _
         . "|\{|}"
     dim miscTokens = ReFind(txt, miscPattern, @ReArrayGlobal)
@@ -518,11 +525,11 @@ func _AddVarPrefixes(dim byref text, dim names)
             "\$$0")  ; by this
 
 
-func _RemoveAsterisks(dim byref text)
+func _RemoveAsterisks(dim byref text, constByDefault)
     text = ReReplace(text, "(?im)^(\s*func\s+)([A-Za-z_]\w*)" _
             . PublicSuffixRegEx, "$1$2")
     const varsDeclars = ReFind(text, "(?im)^" _
-            . (ConstByDefault? _
+            . (constByDefault? _
                     "(?:\s*global\s+)?(?:dim|const|enum)" _
                     : "\s*global") _
             . "\s+(.*)", @ReArrayGlobal)
@@ -557,8 +564,8 @@ func _ToggleDimConst(dim byref text)
         dim newFuncDeclar, args, pos
         for funcDeclar in funcDeclars
             newFuncDeclar = funcDeclar
-            args = ReReplace(funcDeclar, _
-                    "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
+            args = ReReplace _
+                    (funcDeclar, "(?i)\s*func\s+.*?\(\s*(.*)\s*\).*", "$1")
             if args = "" then continueloop
             args = Split(args, ",", @NoCount)
             for arg in args  ; insert “const”
