@@ -94,10 +94,8 @@ func Main*()
     ThruTable = 0  ;~if ImportKeyword then ThruTable = 0
 
     if not RunMode then return
-    const errorWin = RunScript(scriptArgs)
-    if errorWin then
-        ProcessError(errorWin)
-    elseif not RapidMode then
+    const error = RunScript(scriptArgs)
+    if not error and not RapidMode then
         for path in PathsToDeleteOnExit
             FileDelete(path)
 
@@ -396,12 +394,9 @@ func _CloseBlocks(dim byref text)
         
         indentSize = Len(ReReplace(text[i], "^( *).*", "$1"))
         statement = ReReplace(text[i], "^ *(\w*).*", "$1")
-        if ReFind(statement, "(?i)^(else)?if$") then
-            for then_i = i to UBound(text) - 1
-                if ReFind(text[then_i], "(?i)\bthen\b") then  ; with “then”
-                    exitloop
-            if ReFind(text[then_i], "(?i)\bthen\h.*?\S") then  ; with then expr
-                statement = ""
+        ; with “then” expression
+        if ReFind(text[i], "^ *(else)?if\b.*?\bthen\b.*?\S") then
+            statement = ""
         if indentSize < prevIndentSize then
         ;~ func __CloseOpenedBlocks _
         ;~         (statement, indentSize, prevIndentSize, stack)
@@ -439,10 +434,8 @@ func _CloseBlocks(dim byref text)
             redim stack[indentSize]
         endif
         switch statement
-            case "if", "elseif"
-                i = then_i
-                continuecase
-            case "else", "select", "switch", "for", "while", "with", "func"
+            case "if", "elseif", _
+                    "else", "select", "switch", "for", "while", "with", "func"
                 redim stack[indentSize + 1]
                 stack[indentSize] = statement
         prevIndentSize = indentSize
@@ -805,33 +798,41 @@ func RunScript(scriptArgs)
             StdioExchange? StdIn_Child + StdErr_Child + StdOut_Child : 0)
     if not StdioExchange then return 0
     Opt("TrayIconHide", 1)
-    const errorWin = _ProcessStdio(pid)
+    dim errorWin = _ProcessStdio(pid)
     StdioClose(pid)
-    return errorWin
+    if not errorWin then return False
+    dim timer
+    while True
+        _ProcessError(errorWin)
+        timer = TimerInit()
+        while True
+            errorWin = _CatchErrorWin(pid)
+            if errorWin then exitloop
+            if TimerDiff(timer) > 1000 then return True
 
 
 func _ProcessStdio(pid)
-    dim n = 0
+    dim n = 1
     dim lastLoop = False
     dim errorWin
-    while True
-        StdinWrite(pid, ConsoleRead())
-        ConsoleWriteError(StderrRead(pid))
-        ConsoleWrite(StdoutRead(pid))
-        if lastLoop then exitloop
+    do
         if Mod(n, 100) = 0 then  ; hand-picked value
             if not ProcessExists(pid) then  ; ~20% CPU
                 lastLoop = True
         elseif Mod(n, 15) = 0 then  ; hand-picked value
-            errorWin = __CatchErrorWin(pid)  ; ~10% CPU
+            errorWin = _CatchErrorWin(pid)  ; ~10% CPU
             if errorWin then
                 lastLoop = True
+        StdinWrite(pid, ConsoleRead())
+        ConsoleWriteError(StderrRead(pid))
+        ConsoleWrite(StdoutRead(pid))
         GUIGetMsg()  ; prevents hogging of the CPU
         n = Mod(n + 1, 1000)
+    until lastLoop
     return errorWin
 
 
-func __CatchErrorWin(pid)
+func _CatchErrorWin(pid)
     ;~const errorWin = WinGetHandle("[REGEXPTITLE:^AutoIt Error$]")
     ;~if @error then return 0
     ;~if GetProcess(errorWin) = pid then return errorWin
@@ -843,7 +844,7 @@ func __CatchErrorWin(pid)
     return 0
 
 
-func ProcessError(errorWin)
+func _ProcessError(errorWin)
     ; TODO: catch more than one error in message
     dim errorData = _
             ControlGetText(errorWin, "", "[CLASSNN:Static2]")
@@ -872,7 +873,7 @@ func ProcessError(errorWin)
             message = "AutoIt " . message
         errorData = _
                 '"' . filename . '" (' . lineNum . '). ' . message . @ . code
-        Echo(_ANSI(errorData))
+        ConsoleWriteError(_ANSI(errorData))
     elseif IsArray(lineNum) then
         SetTitle(errorWin, "", "Plys Error")
         errorData = _
@@ -880,6 +881,7 @@ func ProcessError(errorWin)
                 . code . @ _
                 . message . '.'
         ControlSetText(errorWin, "", "[CLASSNN:Static2]", errorData)
+        WaitClose(errorWin)
 
 
 
