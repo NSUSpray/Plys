@@ -33,11 +33,17 @@ const CloseBlockByIndentDefault = True
 const ImportKeywordDefault = True
 const SynonymsDefault = True
 
+; Default translator settings
+const StdioExchangeDefault = True
+const RunModeDefault = True
+const ErrorStdOutDefault = False
+const RapidModeDefault = False
+
 ; Translator options
-dim StdioExchange = True
-dim RunMode = True
-dim ErrorStdOut = False
-dim RapidMode = False
+dim StdioExchange
+dim RunMode
+dim ErrorStdOut
+dim RapidMode
 dim InputFilePath
 dim InputFileDir
 dim InputFileNameExt
@@ -49,14 +55,14 @@ dim InputFileNameExt
 ;       DepTable[1..n][0]                  relative path to file “n”
 ;       DepTable[0][1..n]                  names array of file “n”
 ;       DepTable[i][j] = include        file “i” includes file “j”
-dim DepTable[1][1] = [[0]]
+dim DepTable[0][0]
 
 ; Table of visibilities: which module sees names from which module
 ; Only for replacement of not own names
 ; Based on DepTable
 dim ThruTable
 
-dim PlysOpts = [0]  ; Plys-file settings for each file
+dim PlysOpts[0]  ; Plys-file settings for each file
 
 dim PathsToDeleteOnExit[0]
 
@@ -65,35 +71,40 @@ if @ScriptName == "plys.aup" then Main()
 
 
 func Main*()
-    const scriptArgs = ProcessCmdLine()
+    const scriptArgs = CmdLineArgs()
 
     TraySetIcon("stop")
-    TraySetState(TRAY_ICONSTATE_FLASH)
+    TraySetState(Tray_IconState_Flash)
 
     const rel_path = PathPart(InputFilePath, "name", "ext")
-    GetDeps(DepTable, rel_path)
+    redim DepTable[1][1]
+    DepTable[0][0] = 0
+    redim PlysOpts[1]
+    PlysOpts[0] = 0
+    GetDeps(rel_path)
     if not RunMode then Echo("[Dependencies are get]" . @)
 
+    ThruTable = DepTable
     MakeThruTable()  ;~if ImportKeyword then MakeThruTable()
 
     ProcessFiles()
 
-    DepTable = 0
+    redim DepTable[0][0]
+    redim PlysOpts[0]
     ThruTable = 0  ;~if ImportKeyword then ThruTable = 0
 
-    if RunMode then
-        const pid = Run('"' . @AutoItExe _
-                . (ErrorStdOut? '" /ErrorStdOut "' : '" "') . InputFilePath _
-                . '.au3" ' . scriptArgs, "", default, _
-                STDIN_CHILD + STDERR_CHILD + STDOUT_CHILD)
-        if StdioExchange then
-            Opt("TrayIconHide", 1)
-            ProcessStdio(pid)
+    if not RunMode then return
+    const errorWin = RunScript(scriptArgs)
+    if errorWin then
+        ProcessError(errorWin)
+    elseif not RapidMode then
+        for path in PathsToDeleteOnExit
+            FileDelete(path)
 
 
-func ProcessCmdLine()
+func CmdLineArgs()
 ; @CmdLine = [0:n, 1:path, 2:args] or [0:n, 1:/ErrorStdOut, 2:path, 3:args]
-    const pathIndex = _GetPathIndex()
+    const pathIndex = _ParseCmdLine()
     if pathIndex = 0 then
         InputFilePath = OpenDialog("Run Script:", @MyDocumentsDir, _
                 "Plys script files (*.aup)|All files (*.*)")
@@ -113,7 +124,11 @@ func ProcessCmdLine()
     return _ArrayToString(argv, " ")
 
 
-func _GetPathIndex()
+func _ParseCmdLine()
+    StdioExchange = StdioExchangeDefault
+    RunMode = RunModeDefault
+    ErrorStdOut = ErrorStdOutDefault
+    RapidMode = RapidModeDefault
     if @CmdLine[0] = 0 then return 0
     for i = 1 to @CmdLine[0]
         if Left(@CmdLine[i], 1) <> "/" then exitloop
@@ -129,7 +144,7 @@ func _GetPathIndex()
     return i
 
 
-func GetDeps(dim byref DepTable, rel_path)
+func GetDeps(rel_path)
 ; fill DepTable with dependencies recursively
     const depTypes = [IncludeDep, ImportDep]
     dim relrel_deps, rel_dep, dep
@@ -146,7 +161,7 @@ func GetDeps(dim byref DepTable, rel_path)
             dep = Search(DepTable, rel_dep, 1, default, _
                     default, default, default, 0)  ; from 1 element in col 0
             if dep = -1 then  ; new path
-                GetDeps(DepTable, rel_dep)
+                GetDeps(rel_dep)
                 dep = Search(DepTable, rel_dep, 1, default, _
                         default, default, default, 0)  ; from 1st elem in col 0
             DepTable[module][dep] = depType
@@ -221,14 +236,12 @@ func _FindNames(byref text, constByDefault)
                         @ReArrayGlobal)
                 if IsArray(newNames) then
                     Add(names, ReReplace(newNames[0], "^\w", "\$$0", 1))
-    return Unique(names, 0, 0, 0, ARRAYUNIQUE_NOCOUNT)
+    return Unique(names, 0, 0, 0, ArrayUnique_NoCount)
 
 
 ;··············································································
 func MakeThruTable()
 ;··············································································
-    ThruTable = DepTable
-    
     ; capture dependencies throught
     dim changed
     do
@@ -308,7 +321,7 @@ func ProcessFiles()
         if RunMode then
             SetAttrib(targetPath, "+H")
         else
-            Echo('[Writed] "' . targetPath . '"' . @)
+            Echo('[Writed] "' . _ANSI(targetPath) . '"' . @)
     next module
 
 
@@ -321,13 +334,13 @@ func _EnumerateLines(dim byref text, isPlysFile)
     text = Split(text, @, @EntireSplit + @NoCount)
     dim misc
     for i = 0 to UBound(text) - 1
-        if not ReFind(text[i], "^\s*$") then
-            if RunMode then
-                text[i] .= LineNumCommentPrefix . (i + 1)
-            if isPlysFile then
-                misc = _SeparateMain(text[i])
-                text[i] = ReReplace(text[i], "(?i)@ScriptLineNumber\b", i + 1)
-                _CombineTokens(text[i], misc)
+        if ReFind(text[i], "^\s*$") then continueloop
+        if RunMode then
+            text[i] .= LineNumCommentPrefix . (i + 1)
+        if isPlysFile then
+            misc = _SeparateMain(text[i])
+            text[i] = ReReplace(text[i], "(?i)@ScriptLineNumber\b", i + 1)
+            _CombineTokens(text[i], misc)
     text = _ArrayToString(text, @)
 
 
@@ -739,7 +752,8 @@ func _RenameSynonyms(dim byref text)
                 . "Activate|Active|Flash|GetCaretPos|GetClassList" _
                 . "|GetClientSize|GetProcess|GetTitle|Kill|List" _
                 . "|MenuSelectItem|MinimizeAll|MinimizeAllUndo|SetOnTop" _
-                . "|SetTitle|SetTrans|Wait|WaitActive|WaitClose|WaitNotActive" _
+                . "|SetTitle|SetTrans|Wait|WaitActive|WaitClose" _
+                . "|WaitNotActive" _
                 . ")\b", "Win$1")
         ; **Close|**Exists|*GetHandle|**GetPos|*GetState|*GetText|**Move
         ; |*SetState
@@ -782,61 +796,90 @@ func _CombineTokens(dim byref mainText, byref miscTokens)
     mainText = text . mainText[i]
 
 
-func ProcessStdio(pid)
-    const proc = _WinAPI_OpenProcess( _
-            (_WinAPI_GetVersion() >= 6.0)? _
-            PROCESS_QUERY_LIMITED_INFORMATION _
-            : PROCESS_QUERY_INFORMATION, 0, pid)
-    const lastData = _WaitClose(pid)
+func RunScript(scriptArgs)
+    ; NOTE: the Plys will not exit until the running process terminates.
+    ; Although the Plys will be executed to the end.
+    ; To exit the Plys, will need to close the error message window.
+    const pid = Run('"' . @AutoItExe _
+            . '" "' . InputFilePath . '.au3" ' . scriptArgs, "", default, _
+            StdioExchange? StdIn_Child + StdErr_Child + StdOut_Child : 0)
+    if not StdioExchange then return 0
+    Opt("TrayIconHide", 1)
+    const errorWin = _ProcessStdio(pid)
     StdioClose(pid)
-    if _WinAPI_GetExitCodeProcess(proc) = 0 then
-        if not RapidMode then
-            for path in PathsToDeleteOnExit
-                FileDelete(path)
-    elseif ErrorStdOut and lastData <> "" then
-        ConsoleWrite(_FormatError(lastData))
-    _WinAPI_CloseHandle(proc)
+    return errorWin
 
 
-func _WaitClose(pid)
-    dim timer = TimerInit()
-    dim stdoutData, lastData = "", lastLoop = False
+func _ProcessStdio(pid)
+    dim n = 0
+    dim lastLoop = False
+    dim errorWin
     while True
         StdinWrite(pid, ConsoleRead())
         ConsoleWriteError(StderrRead(pid))
-        if ErrorStdOut then
-            stdoutData = StdoutRead(pid)
-            if stdoutData <> "" then lastData = stdoutData
-            ConsoleWrite(stdoutData)
-        else
-            ConsoleWrite(StdoutRead(pid))
+        ConsoleWrite(StdoutRead(pid))
         if lastLoop then exitloop
-        if TimerDiff(timer) > 300 then
-            if not ProcessExists(pid) then lastLoop = True
-            timer = TimerInit()
+        if Mod(n, 100) = 0 then  ; hand-picked value
+            if not ProcessExists(pid) then  ; ~20% CPU
+                lastLoop = True
+        elseif Mod(n, 15) = 0 then  ; hand-picked value
+            errorWin = __CatchErrorWin(pid)  ; ~10% CPU
+            if errorWin then
+                lastLoop = True
         GUIGetMsg()  ; prevents hogging of the CPU
-    return lastData
+        n = Mod(n + 1, 1000)
+    return errorWin
 
 
-func _FormatError(dim errorData)
+func __CatchErrorWin(pid)
+    ;~const errorWin = WinGetHandle("[REGEXPTITLE:^AutoIt Error$]")
+    ;~if @error then return 0
+    ;~if GetProcess(errorWin) = pid then return errorWin
+    ; ↑ does not affect performance
+    const errorWins = List("[REGEXPTITLE:^AutoIt Error$]")
+    for i = 1 to errorWins[0][0]
+        if GetProcess(errorWins[i][1]) = pid then
+            return errorWins[i][1]
+    return 0
+
+
+func ProcessError(errorWin)
     ; TODO: catch more than one error in message
-    errorData = ReFind(errorData, '[^"]*("?)' _  ; 0: "
-            . '([a-zA-Z]:\\.+?\.au[p3])' _  ; 1: C:\.aup
-            . '(\.au3)' _  ; 2: .au3
-            . '("? \()' _  ; 3: " (
-            . '(\d+)' _  ; 4: line number
-            . '(\) : ==> )' _  ; 5: ) : ==> 
-            . '(.+?)\.: ?\R' _  ; 6: Message.:
-            . '(.+\R)' _  ; 7: statemXnt
-            . '(.*?)' _  ; 8: statem
-            . '(\^ ERROR\R)?$', _  ; 9: ^ ERROR
+    dim errorData = _
+            ControlGetText(errorWin, "", "[CLASSNN:Static2]")
+    errorData = ReFind(errorData, '^Line (\d+)  ' _  ; 0: line number
+            . '\(File "(.*?)\.au3"\):\R\R' _  ; 1: source filename
+            . '(.+\R)' _  ; 2: statemXnt
+            . '(.*?)' _  ; 3: statem
+            . '(\^ ERROR\R)?' _  ; 4: ^ ERROR
+            . '\R(.+)\.', _  ; 5: Message
             @ReArray)
-    const line = ReadLine(errorData[1] . errorData[2], errorData[4])
-    errorData[2] = ""
-    errorData[4] = _
-            ReReplace(line, ".*?" . LineNumCommentPrefix . "(\d+)$", "$1")
-    errorData[6] .= ": " . TrimLeft(errorData[7], Len(errorData[8]))
-    return _ArrayToString(errorData, "", 0, 6)
+    dim filename = errorData[1]
+    const au3LineNum = errorData[0]
+    const line = ReadLine(filename . ".au3", au3LineNum)
+    dim lineNum = _
+            ReFind(line, ".*?" . LineNumCommentPrefix . "(\d+)$", @ReArray)
+    dim message = errorData[5]
+    const code = errorData[2] . errorData[3] . errorData[4]
+    if ErrorStdOut then
+        ; close error window
+        ControlClick(errorWin, "", "[CLASSNN:Button1]")
+        if IsArray(lineNum) then
+            lineNum = lineNum[0]
+        else
+            filename .= ".au3"
+            lineNum = au3LineNum
+            message = "AutoIt " . message
+        errorData = _
+                '"' . filename . '" (' . lineNum . '). ' . message . @ . code
+        Echo(_ANSI(errorData))
+    elseif IsArray(lineNum) then
+        SetTitle(errorWin, "", "Plys Error")
+        errorData = _
+                'Line ' . lineNum[0] . '  (File "' . filename . '"):' . @ . @ _
+                . code . @ _
+                . message . '.'
+        ControlSetText(errorWin, "", "[CLASSNN:Static2]", errorData)
 
 
 
@@ -873,3 +916,7 @@ func PathPart(path, dim start="path", dim finish="")
 
 func _IsPlysFile(path)
     return PathPart(path, "ext") = ".aup"
+
+
+func _ANSI(str)
+    return BinaryToString(StringToBinary(str, 4), 1)
