@@ -1,3 +1,4 @@
+#NoTrayIcon
 #include <ProcessConstants.au3>
 #include <TrayConstants.au3>
 #include <WinAPIHObj.au3>
@@ -7,15 +8,17 @@ Opt("MustDeclareVars", 1)
 
 ; NOTE: rel_* - relative to InputFileDir, relrel_* - relative to rel_path
 
-const Version = "0.4.0"
+const Version = "0.5.0"
 const PlysPathRegEx = PrepareForRegEx _
         (PathPart(@AutoItExe, "drive", "dir") . "Plys\plys.aup.au3")
+const TrayIconPathRegEx = _
+        PrepareForRegEx(PathPart(@AutoItExe, "drive", "dir") . "Plys\tray.ico")
 
 enum IncludeDep = 2, MirIncludeDep = 1.5, ImportDep = 1
 enum LambdaFunctionsKey, NoDollarPrefixKey, ConstByDefaultKey, _
         CloseBlockByIndentKey, ImportKeywordKey, SynonymsKey
 
-; Translation settings
+; Translation code settings
 const MainTokenDelim = Chr(0x0C)  ; form feed
 const MiscTokenDelim = Chr(0x0B)  ; vertical tab
 const LineNumCommentPrefix = @tab . @tab . "; #"
@@ -24,6 +27,12 @@ const TabInSpaces = "    "
 const PublicSuffixRegEx = "\*"
 const NewSuffixLen = 2
 const NameDelimRegEx = ":"
+
+; Translation timing settings
+const FlashStopTrayIconDelay = 300  ; ms
+const ErrorWinWaitDelay = 500  ; ms
+const ProcessExistsChance = 100  ; hand-picked value
+const CatchErrorWinChance = 15  ; hand-picked value
 
 ; Default Plys-file settings
 const LambdaFunctionsDefault = True
@@ -71,11 +80,9 @@ if @ScriptName == "plys.aup" then Main()
 
 
 func Main*()
+    AdlibRegister(FuncName(ShowTrayIcon), FlashStopTrayIconDelay)
+
     const scriptArgs = CmdLineArgs()
-
-    TraySetIcon("stop")
-    TraySetState(Tray_IconState_Flash)
-
     const rel_path = PathPart(InputFilePath, "name", "ext")
     redim DepTable[1][1]
     DepTable[0][0] = 0
@@ -92,6 +99,8 @@ func Main*()
     redim DepTable[0][0]
     redim PlysOpts[0]
     ThruTable = 0  ;~if ImportKeyword then ThruTable = 0
+
+    AdlibUnRegister(FuncName(ShowTrayIcon))
 
     if not RunMode then return
     const error = RunScript(scriptArgs)
@@ -120,6 +129,13 @@ func CmdLineArgs()
     for i = pathIndex + 1 to @CmdLine[0]
         argv[i - 2] = '"' . @CmdLine[i] . '"'
     return _ArrayToString(argv, " ")
+
+
+func ShowTrayIcon()
+    Opt("TrayIconHide", 0)
+    TraySetIcon("stop")
+    TraySetState(Tray_IconState_Flash)
+    AdlibUnRegister(FuncName(ShowTrayIcon))
 
 
 func _ParseCmdLine()
@@ -294,8 +310,7 @@ func ProcessFiles()
 
         _EnumerateLines(mainText, isPlysFile)
         opts = PlysOpts[module]
-        if isPlysFile and opts[SynonymsKey] and module = 1 then
-            _AppendDefaultLibs(mainText)
+        if module = 1 then _AppendHeader(mainText, opts[SynonymsKey])
         miscTokens = _SeparateMain(mainText)
         if isPlysFile then
             if opts[CloseBlockByIndentKey] then _CloseBlocks(mainText)
@@ -342,11 +357,16 @@ func _EnumerateLines(dim byref text, isPlysFile)
     text = _ArrayToString(text, @)
 
 
-func _AppendDefaultLibs(dim byref text)
-    text = ReReplace(text, "(?im)^(?!\#au)", _
-            "#include <StringConstants.au3>" . @ _
-            . "#include <Array.au3>" . @, 1); _
-            ;~ . "#include <Function.au3>" . @, 1)
+func _AppendHeader(dim byref text, synonyms)
+    dim header = ""
+    if synonyms then
+        header .= "#include <StringConstants.au3>" . @
+        header .= "#include <Array.au3>" . @
+        ;~header .= "#include <Function.au3>" . @
+    if RunMode then
+        header .= 'TraySetToolTip("AutoIt Plys - " . @ScriptName)' . @
+        header .= 'TraySetIcon("' . TrayIconPathRegEx . '")' . @
+    text = ReReplace(text, "(?im)^(?!\#|$)", header, 1)
 
 
 func _SeparateMain(dim byref txt)
@@ -704,6 +724,11 @@ func _SubstituteMacros(dim byref text)
             '"' . PrepareForRegEx(InputFilePath) . '"')
     text = ReReplace(text, "(?i)@ScriptName\b", _
             '"' . PrepareForRegEx(InputFileNameExt) . '"')
+    if RunMode then
+        text = ReReplace(text, "(?i)\b(TraySetToolTip\()\)", _
+                '$1"AutoIt Plys - " . @ScriptName)')
+        text = ReReplace(text, "(?i)\b(TraySetIcon\()\)", _
+                '$1"' . TrayIconPathRegEx . '")')
 
 
 ;::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
@@ -808,7 +833,7 @@ func RunScript(scriptArgs)
         while True
             errorWin = _CatchErrorWin(pid)
             if errorWin then exitloop
-            if TimerDiff(timer) > 1000 then return True
+            if TimerDiff(timer) > ErrorWinWaitDelay then return True
 
 
 func _ProcessStdio(pid)
@@ -816,10 +841,10 @@ func _ProcessStdio(pid)
     dim lastLoop = False
     dim errorWin
     do
-        if Mod(n, 100) = 0 then  ; hand-picked value
+        if Mod(n, ProcessExistsChance) = 0 then
             if not ProcessExists(pid) then  ; ~20% CPU
                 lastLoop = True
-        elseif Mod(n, 15) = 0 then  ; hand-picked value
+        elseif Mod(n, CatchErrorWinChance) = 0 then
             errorWin = _CatchErrorWin(pid)  ; ~10% CPU
             if errorWin then
                 lastLoop = True
@@ -845,7 +870,6 @@ func _CatchErrorWin(pid)
 
 
 func _ProcessError(errorWin)
-    ; TODO: catch more than one error in message
     dim errorData = _
             ControlGetText(errorWin, "", "[CLASSNN:Static2]")
     errorData = ReFind(errorData, '^Line (\d+)  ' _  ; 0: line number
@@ -853,7 +877,7 @@ func _ProcessError(errorWin)
             . '(.+\R)' _  ; 2: statemXnt
             . '(.*?)' _  ; 3: statem
             . '(\^ ERROR\R)?' _  ; 4: ^ ERROR
-            . '\R(.+)\.', _  ; 5: Message
+            . '\RError: (.+)', _  ; 5: Message
             @ReArray)
     dim filename = errorData[1]
     const au3LineNum = errorData[0]
@@ -862,6 +886,7 @@ func _ProcessError(errorWin)
             ReFind(line, ".*?" . LineNumCommentPrefix . "(\d+)$", @ReArray)
     dim message = errorData[5]
     const code = errorData[2] . errorData[3] . errorData[4]
+    ; TODO: translate code to Plys
     if ErrorStdOut then
         ; close error window
         ControlClick(errorWin, "", "[CLASSNN:Button1]")
@@ -870,16 +895,17 @@ func _ProcessError(errorWin)
         else
             filename .= ".au3"
             lineNum = au3LineNum
-            message = "AutoIt " . message
-        errorData = _
-                '"' . filename . '" (' . lineNum . '). ' . message . @ . code
+            message .= " ==> Plys Translator."
+        errorData = '"' . filename . '" (' . lineNum . ') : ==> ' . message _
+                . ':' . @ . code
         ConsoleWriteError(_ANSI(errorData))
+        WaitClose(errorWin)
     elseif IsArray(lineNum) then
         SetTitle(errorWin, "", "Plys Error")
         errorData = _
                 'Line ' . lineNum[0] . '  (File "' . filename . '"):' . @ . @ _
                 . code . @ _
-                . message . '.'
+                . 'Error: ' . message
         ControlSetText(errorWin, "", "[CLASSNN:Static2]", errorData)
         WaitClose(errorWin)
 

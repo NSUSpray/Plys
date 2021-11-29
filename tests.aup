@@ -103,13 +103,20 @@ func func_continuation()
 			. TabInSpaces . "return \$b \+ \$c\R" _
 			. "endfunc$")
 
+func tray_set_tool_tip()
+	RunMode = True
+	txt = 'TraySetToolTip("A")' . @ . "TraySetToolTip()"
+	_SubstituteMacros(txt)
+	return txt == 'TraySetToolTip("A")' . @ _
+			. 'TraySetToolTip("AutoIt Plys - " . @ScriptName)'
+
 ; TODO: on changed dependence
 
 
 const funcs = [import, process_imports, if_then_one, if_then_block, if_then_, _
 		script_line_number, script_full_path, script_name, plys_path, _
 		plys_version, path_part, lambda, make_lambda_lines, process_lambdas, _
-		func_continuation]
+		func_continuation, tray_set_tool_tip]
 
 failed = 0
 for f in funcs

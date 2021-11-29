@@ -1,90 +1,4 @@
-﻿<div align="center">
-<h3>Light Your AutoIt Code!</h3>
-<br>
-
-<table>
-<tr><th>AutoIt</th><th>AutoIt Plys</th></tr>
-<tr align="left"><td><sub>
-
-```autoit
-; −−−−−−−−−−−−−−−−−−−− lib1.au3 −−−−−−−−−−−−−−−−−−−− ;
-
-#include <StringConstants.au3>
-
-Func __Lib1_Merge(Const $a, Const $b, Const $c, $d="")
-  If $d = "" Then
-    Local Const $t = $a($b, $c)
-    $d = $a(@CRLF & $b & @CRLF & $t & @CRLF, $t)
-  Else
-    $d &= $a($c & @CRLF & $b, $d)
-  EndIf
-  Return _
-    StringRegExpReplace _
-      ($d, "(" & $b & ")" & $b, "$1" & $c) & _
-    UBound(StringRegExp _
-      ($d, $c, $STR_REGEXPARRAYGLOBALFULLMATCH))
-EndFunc
-
-
-; −−−−−−−−−−−−−−−−−−−− lib2.au3 −−−−−−−−−−−−−−−−−−−− ;
-
-#include "lib1.au3"
-
-Func __Lib2_Xyx(Const $x, Const $y)
-  Return $x & $y & $x
-EndFunc
-
-Global $r = __Lib1_Merge(__Lib2_Xyx, "S", "T")
-For $i = 1 To 5
-  $r = "<" & $r & ">"
-  ConsoleWrite("$r = " & $r & @CRLF)
-Next
-```
-
-</sub></td><td><sub>
-
-```autoit
-; −−−−−−−−−−−−−−−−−−−− lib1.aup −−−−−−−−−−−−−−−−−−−− ;
-
-func merge*(a, b, c, dim d="")
-  if d = "" then
-    const t = a(b, c)
-    d = a(@ . b . @ . t . @, t)
-  else
-    d .= a(c . @ . b, d)
-  return _
-    ReReplace(d, "(" . b . ")" . b, "$1" . c) . _
-    UBound(ReFind(d, c, @ReArrayGlobalFull))
-
-
-; −−−−−−−−−−−−−−−−−−−− lib2.aup −−−−−−−−−−−−−−−−−−−− ;
-
-#import "lib1.aup"
-
-dim r = lib1:merge({x, y: x . y . x}, "S", "T")
-for i = 1 to 5
-  r = "<" . r . ">"
-  Echo("r = " . r . @)
-
-
-
-
-
-
-
-
-
-
-
-
-
-```
-
-</sub></td></tr>
-</table>
-<br>
-<img alt="Plys logo" src="/help_translator/autoit_11_210x72.jpg">
-</div>
+﻿<img alt="Plys logo" src="/help_translator/autoit_11_210x72.jpg" align="right" float="left">
 
 # Plys – AutoIt language superset
 
@@ -94,54 +8,18 @@ for i = 1 to 5
 
 <p><strong>• python-like import operator</strong></p>
 
+## Light Your AutoIt Code!
 
 This inconspicuous wrapper complements the AutoIt language with
 
-1. preprocessor keyword **#import** in addition to *#include* similar to [*import* in Python](https://en.wikibooks.org/wiki/Python_Programming/Modules#Importing_a_Module)
+1. preprocessor keyword **#import** "filename" loads only public functions and variables
 1. Python-like code blocks by lines indentation (without *endfunc*, *wend* etc.)
 1. **dim** and **const** outside of functions means *global* and *global const* respectively, inside of functions means *local* and *local const*
 1. arguments of function are *const* by default, but with *dim* prefix it becomes variable
 1. lighter [synonyms](synonyms.md) for functions, macros and operators as a rule using in large projects: for arrays, files and strings
 1. no “$”-prefix in variable names
 1. one-line anonymous functions
-1. and **each of this is optional**
-
-
-## Overview
-
-```autoit
-; file “mylib.aup”
-
-dim foo*, bar
-
-func baz*()
-    foo = quux()
-
-func quux(dim arg="one/two/three")
-    bar = Sort(Split(arg, "/", @NoCount))
-    return "begin" . @ . bar[0] . @ . "end"
-```
-
-```autoit
-; file “main.aup”
-
-#import "mylib.aup"
-...
-```
-
-In this example variable *bar* and function *quux()* are private for module *mylib.aup* (names at declaration without an asterisk at the end) and not visible in *main.aup*. Variable *foo* and function *baz()* will be visible with the “mylib:” prefix:
-
-```autoit
-; file “main.aup”
-
-#import "mylib.aup"
-
-foo = baz()  ; error: no foo and baz() in this scope
-mylib:foo = mylib:baz()  ; OK: foo and baz() are public in “mylib” scope
-mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” scope
-```
-
-*Sort* is synonym for \_ArraySort, *Split* is synonym for StringSplit, *@NoCount* is synonym for $STR_NOCOUNT, “*@*” is synonym for @CRLF, “*.*” is synonym for “&” operator. See [full list](synonyms.md).
+1. and each of this **is optional**
 
 
 ## Setup
@@ -151,24 +29,6 @@ mylib:bar = mylib:quux()  ; error: bar and quux() are private in “mylib” sco
 
 1. Download and unpack archive from [latest release](https://github.com/NSUSpray/Plys/releases/latest).
 1. Double click the “setup.aup.au3” file and follow to setup instructions.
-
-
-## First steps
-
-1. Right-click in the any folder and select `New > AutoIt Plys Script`.
-1. Right-click on the created file again and select `Edit Script`.
-1. At the bottom of the file type the following:
-
-    ```autoit
-    #include <MsgBoxConstants.au3>
-    dim msg = ""
-    for i = 1 to 10
-        msg .= "Hello World!" . @
-    msg = TrimRight(msg, 1)
-    MsgBox(MB_OK, "My First Plys Script", msg)
-    ```
-
-1. Save the script and double-click the file for run (or right-click the file and select `Run Script`).
 
 
 ## Extra options
@@ -211,37 +71,4 @@ You can compile the script, specifying to the compiler the translating file *\*.
 The *plys.aup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (Program Files\AutoIt3\Plys\plys.aup.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
 
 
-## Future
-
-* \#import "*filename.aup*" **noprefix**
-
-    ```autoit
-    #import "mylib.aup" noprefix
-    bar = foo()
-    ; bar and foo will be taken from the “mylib.aup” without “mylib:” prefix
-    ```
-
-* \#import "*filename.aup*" as **alias**
-
-    ```autoit
-    #import "mylib.aup" as ml
-    ml:bar = ml:foo()  ; bar and foo will be taken from the “mylib.aup”
-    ```
-
-* function scope functions
-
-    ```autoit
-    func GlobalFunc()
-        dim var1 = "body"
-        func LocalFunc(var2)
-            return "begin" . @ . var2 . @ . "end"
-        return LocalFunc(LocalFunc(var1))
-
-    MsgBox(MB_OK, "begin/body/end", GlobalFunc())
-    ```
-
-* array values in place
-
-    ```autoit
-    Display([1, 2, 3])
-    ```
+[Read more on the AutoIt forum](https://www.autoitscript.com/forum/topic/198342)
