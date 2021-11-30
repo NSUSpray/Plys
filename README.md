@@ -49,7 +49,7 @@ You can use extra options for each file by typing in the script one of this:
 
 After installation Plys already integrated to Windows shell. If you want to run a script by command line use
 
-```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Rapid] [/ErrorStdOut] [/NoStdio] <script path> [<arguments>]```
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.aup.au3 [/Rapid] [/ErrorStdOut] [/NoStdio] <script path> [<arguments>]```
 
 `/Rapid` means that if source files have not be modified since the previous run, they will not be re-translated. This option speeds up script execution startup.
 
@@ -59,7 +59,7 @@ Also you can turn off data exchange through standard input/output streams, then 
 
 If you want to translate a script to pure AutoIt code use
 
-```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.au3 [/Translate] <script path>```
+```<AutoIt3.exe path> <AutoIt3exe folder>\Plys\plys.aup.au3 [/Translate] <script path>```
 
 Try [AutoIt Plys package](https://github.com/NSUSpray/AutoItPlysSublime) for [Sublime Text](https://www.sublimetext.com/) which including syntax highlighting, comments toggling, auto-completions, build systems for run and compile, context help, Tidy and Include Helper command for AutoIt and AutoIt Plys.
 
@@ -71,4 +71,4 @@ You can compile the script, specifying to the compiler the translating file *\*.
 The *plys.aup.au3* file contains the code that will run immediately after the launch of your script. On setup this file will copy to AutoIt install dir (Program Files\AutoIt3\Plys\plys.aup.au3) and aup-files will associated with it. On the launch aup-files are automatically processed, after which the new AutoIt process interprets the already converted code, and the current process remains cycle to continue data exchange with the new process via standard streams. This handler replaces all *#import* with *#include*. The processed files get the extension *.aup.au3* and are placed in the folder of the original script with *hidden* attribute.
 
 
-[Read more on the AutoIt forum](https://www.autoitscript.com/forum/topic/198342)
+[Read more on the AutoIt forum](https://www.autoitscript.com/forum/topic/198342-plys-%E2%80%93-autoit-superset-with-namespaces-and-stuff/)
